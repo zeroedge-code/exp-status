@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 
 const STORAGE_KEY = 'expertiger-status-app-v1'
-const INTERN_PASSWORD = 'experten2026'
 
 const categories = [
   'Finanzen & Expertenzahlungen',
@@ -70,28 +69,7 @@ const initialData = {
         'Die Terminserie ist bestätigt. Weitere Änderungen werden separat dokumentiert.',
     },
   ],
-  tasks: [
-    {
-      id: crypto.randomUUID(),
-      title: 'Erinnerung an Schweden: offene Bankantwort',
-      owner: 'Team Deutschland',
-      dueDate: '2026-05-24',
-      reminderInterval: 'einmalig',
-      notes: 'Kurzstatus und Bitte um Rückmeldung versenden.',
-      visibility: 'nur intern',
-      completed: false,
-    },
-    {
-      id: crypto.randomUUID(),
-      title: 'Monatliches Marketing-Update vorbereiten',
-      owner: 'Marketing',
-      dueDate: '2026-05-31',
-      reminderInterval: 'monatlich wiederkehrend',
-      notes: 'Status, offene Punkte und nächste Schritte bündeln.',
-      visibility: 'öffentlich',
-      completed: false,
-    },
-  ],
+  tasks: [],
 }
 
 function normalizeData(rawData) {
@@ -178,7 +156,7 @@ function App() {
   return (
     <div className="min-h-screen">
       <TopNavigation path={path} navigate={navigate} />
-      {upcomingSevenDays.length > 0 && (
+      {path === '/intern' && upcomingSevenDays.length > 0 && (
         <div className="border-b border-amber-200 bg-amber-100/80">
           <div className="mx-auto flex max-w-7xl flex-col gap-2 px-4 py-3 text-sm text-amber-950 sm:flex-row sm:items-center sm:justify-between">
             <strong>
@@ -192,7 +170,7 @@ function App() {
       {path === '/intern' ? (
         <InternPage data={data} updateData={updateData} />
       ) : (
-        <StatusPage statusEntries={data.statusEntries} navigate={navigate} />
+        <StatusPage statusEntries={data.statusEntries} />
       )}
     </div>
   )
@@ -218,9 +196,11 @@ function TopNavigation({ path, navigate }) {
           <NavButton active={path !== '/intern'} onClick={() => navigate('/status')}>
             Status
           </NavButton>
-          <NavButton active={path === '/intern'} onClick={() => navigate('/intern')}>
-            Intern
-          </NavButton>
+          {path === '/intern' && (
+            <NavButton active onClick={() => navigate('/intern')}>
+              Intern
+            </NavButton>
+          )}
         </nav>
       </div>
     </header>
@@ -243,7 +223,7 @@ function NavButton({ active, children, onClick }) {
   )
 }
 
-function StatusPage({ statusEntries, navigate }) {
+function StatusPage({ statusEntries }) {
   const groupedEntries = categories.map((category) => ({
     category,
     entries: statusEntries.filter((entry) => entry.category === category),
@@ -251,7 +231,7 @@ function StatusPage({ statusEntries, navigate }) {
 
   return (
     <main className="mx-auto max-w-7xl px-4 py-8">
-      <section className="mb-8 flex flex-col gap-4 rounded-xl border border-white bg-white/70 p-6 shadow-sm sm:flex-row sm:items-end sm:justify-between">
+      <section className="mb-8 rounded-xl border border-white bg-white/70 p-6 shadow-sm">
         <div>
           <p className="mb-2 text-xs font-bold uppercase text-teal-700">
             Öffentlich lesbar
@@ -264,13 +244,6 @@ function StatusPage({ statusEntries, navigate }) {
             dokumentierten Stand.
           </p>
         </div>
-        <button
-          type="button"
-          onClick={() => navigate('/intern')}
-          className="rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-800 shadow-sm hover:bg-slate-50"
-        >
-          Internes Dashboard
-        </button>
       </section>
 
       <div className="space-y-8">
@@ -341,54 +314,6 @@ function StatusBadge({ status }) {
 }
 
 function InternPage({ data, updateData }) {
-  const [authenticated, setAuthenticated] = useState(
-    sessionStorage.getItem('expertiger-intern-auth') === 'true',
-  )
-  const [password, setPassword] = useState('')
-
-  if (!authenticated) {
-    return (
-      <main className="mx-auto flex max-w-md px-4 py-16">
-        <form
-          className="w-full rounded-xl border border-slate-200 bg-white p-6 shadow-lg shadow-slate-200/70"
-          onSubmit={(event) => {
-            event.preventDefault()
-            if (password === INTERN_PASSWORD) {
-              sessionStorage.setItem('expertiger-intern-auth', 'true')
-              setAuthenticated(true)
-            }
-          }}
-        >
-          <h2 className="text-2xl font-semibold text-slate-950">
-            Internes Dashboard
-          </h2>
-          <p className="mt-2 text-sm text-slate-600">
-            Passwortschutz für die lokale Verwaltungsansicht.
-          </p>
-          <label className="mt-6 block text-sm font-medium text-slate-700">
-            Passwort
-            <input
-              type="password"
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-              className="mt-2 w-full rounded-md border border-slate-300 px-3 py-2 text-slate-950 outline-none focus:border-teal-700"
-              autoFocus
-            />
-          </label>
-          <button
-            type="submit"
-            className="mt-5 w-full rounded-md bg-teal-900 px-4 py-2 font-semibold text-white hover:bg-teal-800"
-          >
-            Einloggen
-          </button>
-          <p className="mt-3 text-xs text-slate-500">
-            Demo-Passwort: {INTERN_PASSWORD}
-          </p>
-        </form>
-      </main>
-    )
-  }
-
   return <Dashboard data={data} updateData={updateData} />
 }
 
