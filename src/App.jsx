@@ -125,19 +125,19 @@ function getDueTasks(tasks, days) {
     .sort((a, b) => a.dueDate.localeCompare(b.dueDate))
 }
 
-function App() {
+function App({ adminOnly = false }) {
   const [data, setData] = useState(loadData)
-  const [path, setPath] = useState(window.location.pathname)
+  const [path, setPath] = useState(adminOnly ? '/intern' : window.location.pathname)
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(data))
   }, [data])
 
   useEffect(() => {
-    const onPopState = () => setPath(window.location.pathname)
+    const onPopState = () => setPath(adminOnly ? '/intern' : window.location.pathname)
     window.addEventListener('popstate', onPopState)
     return () => window.removeEventListener('popstate', onPopState)
-  }, [])
+  }, [adminOnly])
 
   const upcomingSevenDays = useMemo(
     () => getDueTasks(data.tasks.filter((task) => !task.completed), 7),
@@ -145,6 +145,7 @@ function App() {
   )
 
   function navigate(nextPath) {
+    if (adminOnly) return
     window.history.pushState({}, '', nextPath)
     setPath(nextPath)
   }
@@ -153,10 +154,12 @@ function App() {
     setData(nextData)
   }
 
+  const isIntern = adminOnly || path === '/intern'
+
   return (
     <div className="min-h-screen">
-      <TopNavigation path={path} navigate={navigate} />
-      {path === '/intern' && upcomingSevenDays.length > 0 && (
+      <TopNavigation path={path} navigate={navigate} adminOnly={adminOnly} />
+      {isIntern && upcomingSevenDays.length > 0 && (
         <div className="border-b border-amber-200 bg-amber-100/80">
           <div className="mx-auto flex max-w-7xl flex-col gap-2 px-4 py-3 text-sm text-amber-950 sm:flex-row sm:items-center sm:justify-between">
             <strong>
@@ -167,7 +170,7 @@ function App() {
           </div>
         </div>
       )}
-      {path === '/intern' ? (
+      {isIntern ? (
         <InternPage data={data} updateData={updateData} />
       ) : (
         <StatusPage statusEntries={data.statusEntries} />
@@ -176,7 +179,7 @@ function App() {
   )
 }
 
-function TopNavigation({ path, navigate }) {
+function TopNavigation({ path, navigate, adminOnly }) {
   return (
     <header className="border-b border-slate-200/80 bg-white/90 backdrop-blur">
       <div className="mx-auto flex max-w-7xl flex-col gap-4 px-4 py-5 sm:flex-row sm:items-center sm:justify-between">
@@ -192,16 +195,18 @@ function TopNavigation({ path, navigate }) {
             Status & Erinnerungen
           </h1>
         </button>
-        <nav className="inline-flex w-fit rounded-lg border border-slate-200 bg-slate-100 p-1">
-          <NavButton active={path !== '/intern'} onClick={() => navigate('/status')}>
-            Status
-          </NavButton>
-          {path === '/intern' && (
-            <NavButton active onClick={() => navigate('/intern')}>
-              Intern
+        {!adminOnly && (
+          <nav className="inline-flex w-fit rounded-lg border border-slate-200 bg-slate-100 p-1">
+            <NavButton active={path !== '/intern'} onClick={() => navigate('/status')}>
+              Status
             </NavButton>
-          )}
-        </nav>
+            {path === '/intern' && (
+              <NavButton active onClick={() => navigate('/intern')}>
+                Intern
+              </NavButton>
+            )}
+          </nav>
+        )}
       </div>
     </header>
   )
