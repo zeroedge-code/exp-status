@@ -3,8 +3,6 @@ import { StrictMode, useEffect, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
 
-const STORAGE_KEY = 'expertiger-status-app-v1'
-
 const categories = [
   'Finanzen & Expertenzahlungen',
   'Marketing',
@@ -47,21 +45,21 @@ const initialStatusEntries = [
   },
 ]
 
-function loadStatusEntries() {
-  try {
-    const stored = localStorage.getItem(STORAGE_KEY)
-    if (!stored) return initialStatusEntries
+function normalizeStatusEntries(rawData) {
+  if (!Array.isArray(rawData?.statusEntries)) return initialStatusEntries
 
-    const parsed = JSON.parse(stored)
-    if (!Array.isArray(parsed.statusEntries)) return initialStatusEntries
+  return rawData.statusEntries.map((entry) => ({
+    ...entry,
+    category: categoryMigration[entry.category] || entry.category,
+  }))
+}
 
-    return parsed.statusEntries.map((entry) => ({
-      ...entry,
-      category: categoryMigration[entry.category] || entry.category,
-    }))
-  } catch {
-    return initialStatusEntries
-  }
+async function fetchStatusEntries() {
+  const response = await fetch('/api/status', {
+    headers: { Accept: 'application/json' },
+  })
+  if (!response.ok) throw new Error('Statusdaten konnten nicht geladen werden.')
+  return normalizeStatusEntries(await response.json())
 }
 
 function formatDate(dateValue) {
@@ -74,12 +72,24 @@ function formatDate(dateValue) {
 }
 
 function StatusApp() {
-  const [statusEntries, setStatusEntries] = useState(loadStatusEntries)
+  const [statusEntries, setStatusEntries] = useState(initialStatusEntries)
+  const [hasSyncError, setHasSyncError] = useState(false)
 
   useEffect(() => {
-    const onStorage = () => setStatusEntries(loadStatusEntries())
-    window.addEventListener('storage', onStorage)
-    return () => window.removeEventListener('storage', onStorage)
+    let active = true
+    fetchStatusEntries()
+      .then((entries) => {
+        if (!active) return
+        setStatusEntries(entries)
+        setHasSyncError(false)
+      })
+      .catch(() => {
+        if (!active) return
+        setHasSyncError(true)
+      })
+    return () => {
+      active = false
+    }
   }, [])
 
   return (
@@ -94,6 +104,13 @@ function StatusApp() {
           </h1>
         </div>
       </header>
+      {hasSyncError && (
+        <div className="border-b border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-900">
+          <div className="mx-auto max-w-7xl">
+            Zentrale Statusdaten sind nicht erreichbar.
+          </div>
+        </div>
+      )}
       <StatusPage statusEntries={statusEntries} />
     </div>
   )

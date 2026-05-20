@@ -1,16 +1,29 @@
-# React + Vite
+# Expertenstatus
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+React/Vite app for the expert status view and the protected internal admin dashboard.
 
-Currently, two official plugins are available:
+## Cloudflare Pages
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+Use two Pages projects from the same repository:
 
-## React Compiler
+- `exp-status`: expert status view
+  - Build command: `npm run build:status`
+  - Output directory: `dist-status`
+  - Environment variable: `APP_TARGET=status`
+  - KV binding: `STATUS_STORE`
+- `exp-status-admin`: internal admin dashboard
+  - Build command: `npm run build:admin`
+  - Output directory: `dist-admin`
+  - Environment variable: `APP_TARGET=admin`
+  - KV binding: `STATUS_STORE`
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+Both projects must use the same KV namespace for `STATUS_STORE`. The status project can read the central data. Only the admin project can write changes because `/api/status` rejects writes unless `APP_TARGET=admin`.
 
-## Expanding the ESLint configuration
+Cloudflare Access should protect `exp-status` for experts and admin users, and `exp-status-admin` for the admin email only.
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+## Local Commands
+
+- `npm run build:status`
+- `npm run build:admin`
+- `npm run build:all`
+- `npm run lint`

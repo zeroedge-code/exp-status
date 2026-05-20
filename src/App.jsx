@@ -1,7 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 
-const STORAGE_KEY = 'expertiger-status-app-v1'
-
 const categories = [
   'Finanzen & Expertenzahlungen',
   'Marketing',
@@ -89,15 +87,22 @@ function normalizeData(rawData) {
   }
 }
 
-function loadData() {
-  try {
-    const stored = localStorage.getItem(STORAGE_KEY)
-    if (!stored) return initialData
-    const parsed = JSON.parse(stored)
-    return normalizeData(parsed)
-  } catch {
-    return initialData
-  }
+async function fetchData() {
+  const response = await fetch('/api/status', {
+    headers: { Accept: 'application/json' },
+  })
+  if (!response.ok) throw new Error('Statusdaten konnten nicht geladen werden.')
+  return normalizeData(await response.json())
+}
+
+async function saveData(nextData) {
+  const response = await fetch('/api/status', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(normalizeData(nextData)),
+  })
+  if (!response.ok) throw new Error('Statusdaten konnten nicht gespeichert werden.')
+  return normalizeData(await response.json())
 }
 
 function daysUntil(dateValue) {
@@ -126,12 +131,26 @@ function getDueTasks(tasks, days) {
 }
 
 function App({ adminOnly = false }) {
-  const [data, setData] = useState(loadData)
+  const [data, setData] = useState(initialData)
+  const [syncState, setSyncState] = useState('loading')
   const [path, setPath] = useState(adminOnly ? '/intern' : window.location.pathname)
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(data))
-  }, [data])
+    let active = true
+    fetchData()
+      .then((remoteData) => {
+        if (!active) return
+        setData(remoteData)
+        setSyncState('ready')
+      })
+      .catch(() => {
+        if (!active) return
+        setSyncState('error')
+      })
+    return () => {
+      active = false
+    }
+  }, [])
 
   useEffect(() => {
     const onPopState = () => setPath(adminOnly ? '/intern' : window.location.pathname)
@@ -150,8 +169,17 @@ function App({ adminOnly = false }) {
     setPath(nextPath)
   }
 
-  function updateData(nextData) {
-    setData(nextData)
+  async function updateData(nextData) {
+    const normalizedData = normalizeData(nextData)
+    setData(normalizedData)
+    setSyncState('saving')
+    try {
+      const savedData = await saveData(normalizedData)
+      setData(savedData)
+      setSyncState('saved')
+    } catch {
+      setSyncState('error')
+    }
   }
 
   const isIntern = adminOnly || path === '/intern'
@@ -159,6 +187,7 @@ function App({ adminOnly = false }) {
   return (
     <div className="min-h-screen">
       <TopNavigation path={path} navigate={navigate} adminOnly={adminOnly} />
+      <SyncBanner syncState={syncState} adminOnly={adminOnly} />
       {isIntern && upcomingSevenDays.length > 0 && (
         <div className="border-b border-amber-200 bg-amber-100/80">
           <div className="mx-auto flex max-w-7xl flex-col gap-2 px-4 py-3 text-sm text-amber-950 sm:flex-row sm:items-center sm:justify-between">
@@ -175,6 +204,32 @@ function App({ adminOnly = false }) {
       ) : (
         <StatusPage statusEntries={data.statusEntries} />
       )}
+    </div>
+  )
+}
+
+function SyncBanner({ syncState, adminOnly }) {
+  if (syncState === 'ready' || syncState === 'saved') return null
+  if (!adminOnly && syncState !== 'error') return null
+
+  const messages = {
+    loading: 'Zentrale Statusdaten werden geladen.',
+    saving: 'Änderungen werden zentral gespeichert.',
+    error:
+      'Zentrale Speicherung ist nicht erreichbar. Bitte Cloudflare KV-Binding prüfen.',
+  }
+
+  return (
+    <div
+      className={`border-b px-4 py-3 text-sm ${
+        syncState === 'error'
+          ? 'border-rose-200 bg-rose-50 text-rose-900'
+          : 'border-sky-200 bg-sky-50 text-sky-900'
+      }`}
+    >
+      <div className="mx-auto max-w-7xl">
+        {adminOnly ? messages[syncState] : syncState === 'error' ? messages.error : null}
+      </div>
     </div>
   )
 }
@@ -349,7 +404,7 @@ function Dashboard({ data, updateData }) {
           </h2>
           <p className="mt-3 max-w-3xl text-slate-600">
             Statusmeldungen, interne Aufgaben, Erinnerungen und Backup-Daten werden
-            lokal im Browser gespeichert.
+            zentral gespeichert und sind browserübergreifend verfügbar.
           </p>
         </div>
         <BackupTools data={data} updateData={updateData} />
