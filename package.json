@@ -6,6 +6,9 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "build:status": "VITE_APP_TARGET=status vite build --outDir dist-status",
+    "build:admin": "VITE_APP_TARGET=admin vite build --outDir dist-admin",
+    "build:all": "npm run build:status && npm run build:admin",
     "lint": "eslint .",
     "preview": "vite preview"
   },
