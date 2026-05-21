@@ -1,23 +1,28 @@
 const STORE_KEY = 'status-data'
 
 const categories = [
-  'Finanzen & Expertenzahlungen',
-  'Marketing',
-  'Abstimmung & Organisation',
-  'Sonstiges',
+  'Auszahlungen & Vergütung',
+  'Marketing & Sichtbarkeit',
+  'Termine & Koordination',
+  'Weitere Themen',
 ]
 
 const categoryMigration = {
-  'Finanzierung & Bank': 'Finanzen & Expertenzahlungen',
-  Organisation: 'Abstimmung & Organisation',
+  'Finanzierung & Bank': 'Auszahlungen & Vergütung',
+  'Finanzen & Expertenzahlungen': 'Auszahlungen & Vergütung',
+  Marketing: 'Marketing & Sichtbarkeit',
+  Organisation: 'Termine & Koordination',
+  'Abstimmung & Organisation': 'Termine & Koordination',
+  Sonstiges: 'Weitere Themen',
 }
 
-const statusOptions = [
-  'Antwort ausstehend',
-  'In Bearbeitung',
-  'Abgeschlossen',
-  'Dringend',
-]
+const statusOptions = ['Neu', 'Dringend', 'Offen', 'Erledigt']
+
+const statusMigration = {
+  'Antwort ausstehend': 'Offen',
+  'In Bearbeitung': 'Offen',
+  Abgeschlossen: 'Erledigt',
+}
 
 const reminderIntervals = ['einmalig', 'monatlich wiederkehrend']
 const datePattern = /^\d{4}-\d{2}-\d{2}$/
@@ -26,27 +31,30 @@ const defaultData = {
   statusEntries: [
     {
       id: 'status-payment-documents',
-      category: 'Finanzen & Expertenzahlungen',
+      category: 'Auszahlungen & Vergütung',
       title: 'Rückmeldung Zahlungsunterlagen',
-      status: 'Antwort ausstehend',
+      status: 'Offen',
+      createdAt: '2026-05-18',
       updatedAt: '2026-05-18',
       description:
         'Die eingereichten Unterlagen liegen zur Prüfung vor. Der nächste Stand wird nach Eingang der Rückmeldung ergänzt.',
     },
     {
       id: 'status-campaign-material',
-      category: 'Marketing',
+      category: 'Marketing & Sichtbarkeit',
       title: 'Abstimmung Kampagnenmaterial',
-      status: 'In Bearbeitung',
+      status: 'Neu',
+      createdAt: '2026-05-20',
       updatedAt: '2026-05-20',
       description:
         'Entwürfe werden intern konsolidiert und anschließend für die Freigabe vorbereitet.',
     },
     {
       id: 'status-expert-schedule',
-      category: 'Abstimmung & Organisation',
+      category: 'Termine & Koordination',
       title: 'Terminplanung Expertenrunde',
-      status: 'Abgeschlossen',
+      status: 'Erledigt',
+      createdAt: '2026-05-16',
       updatedAt: '2026-05-16',
       description:
         'Die Terminserie ist bestätigt. Weitere Änderungen werden separat dokumentiert.',
@@ -74,6 +82,10 @@ function normalizeCategory(category) {
   return categoryMigration[category] || category
 }
 
+function normalizeStatus(status) {
+  return statusMigration[status] || status
+}
+
 function isValidDateString(value) {
   if (typeof value !== 'string' || !datePattern.test(value)) return false
   const date = new Date(`${value}T00:00:00Z`)
@@ -91,7 +103,8 @@ function normalizeStatusEntry(entry) {
     id: cleanString(entry.id),
     category: normalizeCategory(entry.category),
     title: cleanString(entry.title),
-    status: entry.status,
+    status: normalizeStatus(entry.status),
+    createdAt: entry.createdAt || entry.updatedAt,
     updatedAt: entry.updatedAt,
     description: cleanString(entry.description),
   }
@@ -101,6 +114,7 @@ function normalizeStatusEntry(entry) {
     !categories.includes(normalized.category) ||
     !normalized.title ||
     !statusOptions.includes(normalized.status) ||
+    !isValidDateString(normalized.createdAt) ||
     !isValidDateString(normalized.updatedAt)
   ) {
     return null

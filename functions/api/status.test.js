@@ -37,6 +37,7 @@ function validData() {
         category: 'Finanzierung & Bank',
         title: 'Unterlagen',
         status: 'In Bearbeitung',
+        createdAt: '2026-05-20',
         updatedAt: '2026-05-21',
         description: 'Prüfung läuft.',
       },
@@ -95,7 +96,9 @@ test('PUT rejects malformed JSON', async () => {
 test('PUT rejects invalid status and task data', async () => {
   const response = await onRequestPut({
     request: jsonRequest({
-      statusEntries: [{ id: 'bad', category: 'Marketing', title: '', status: 'Unknown' }],
+      statusEntries: [
+        { id: 'bad', category: 'Marketing & Sichtbarkeit', title: '', status: 'Unknown' },
+      ],
       tasks: [{ id: 'bad-task', title: 'Task', dueDate: 'not-a-date' }],
     }),
     env: { APP_TARGET: 'admin', STATUS_STORE: createStore() },
@@ -120,8 +123,19 @@ test('PUT stores normalized valid data', async () => {
   const stored = JSON.parse(store.values.get('status-data'))
 
   assert.equal(response.status, 200)
-  assert.equal(body.statusEntries[0].category, 'Finanzen & Expertenzahlungen')
-  assert.equal(stored.statusEntries[0].category, 'Finanzen & Expertenzahlungen')
+  assert.equal(body.statusEntries[0].category, 'Auszahlungen & Vergütung')
+  assert.equal(body.statusEntries[0].status, 'Offen')
+  assert.equal(body.statusEntries[0].createdAt, '2026-05-20')
+  assert.equal(stored.statusEntries[0].category, 'Auszahlungen & Vergütung')
+  assert.deepEqual(Object.keys(stored.statusEntries[0]).sort(), [
+    'category',
+    'createdAt',
+    'description',
+    'id',
+    'status',
+    'title',
+    'updatedAt',
+  ])
   assert.deepEqual(Object.keys(stored.tasks[0]).sort(), [
     'completed',
     'dueDate',
@@ -131,4 +145,33 @@ test('PUT stores normalized valid data', async () => {
     'reminderInterval',
     'title',
   ])
+})
+
+test('PUT accepts legacy status entries without createdAt', async () => {
+  const store = createStore()
+  const legacyData = validData()
+  delete legacyData.statusEntries[0].createdAt
+
+  const response = await onRequestPut({
+    request: jsonRequest(legacyData),
+    env: { APP_TARGET: 'admin', STATUS_STORE: store },
+  })
+  const body = await response.json()
+
+  assert.equal(response.status, 200)
+  assert.equal(body.statusEntries[0].createdAt, '2026-05-21')
+})
+
+test('PUT preserves urgent status', async () => {
+  const data = validData()
+  data.statusEntries[0].status = 'Dringend'
+
+  const response = await onRequestPut({
+    request: jsonRequest(data),
+    env: { APP_TARGET: 'admin', STATUS_STORE: createStore() },
+  })
+  const body = await response.json()
+
+  assert.equal(response.status, 200)
+  assert.equal(body.statusEntries[0].status, 'Dringend')
 })

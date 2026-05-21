@@ -48,6 +48,9 @@ export function StatusPage({
 
 function StatusCard({ entry }) {
   const borderStyles = {
+    Neu: 'border-l-sky-500',
+    Offen: 'border-l-amber-500',
+    Erledigt: 'border-l-emerald-500',
     'Antwort ausstehend': 'border-l-sky-500',
     'In Bearbeitung': 'border-l-indigo-500',
     Abgeschlossen: 'border-l-emerald-500',
@@ -75,6 +78,9 @@ function StatusCard({ entry }) {
 
 function StatusBadge({ status }) {
   const styles = {
+    Neu: 'bg-sky-100 text-sky-900 ring-sky-200',
+    Offen: 'bg-amber-100 text-amber-900 ring-amber-200',
+    Erledigt: 'bg-emerald-100 text-emerald-900 ring-emerald-200',
     'Antwort ausstehend': 'bg-sky-100 text-sky-900 ring-sky-200',
     'In Bearbeitung': 'bg-indigo-100 text-indigo-900 ring-indigo-200',
     Abgeschlossen: 'bg-emerald-100 text-emerald-900 ring-emerald-200',

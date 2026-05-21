@@ -24,8 +24,29 @@ test('normalizeStatusEntries migrates old category names', () => {
     ],
   })
 
-  assert.equal(entries[0].category, 'Finanzen & Expertenzahlungen')
-  assert.equal(entries[1].category, 'Abstimmung & Organisation')
+  assert.equal(entries[0].category, 'Auszahlungen & Vergütung')
+  assert.equal(entries[1].category, 'Termine & Koordination')
+  assert.equal(entries[0].status, 'Offen')
+  assert.equal(entries[1].status, 'Erledigt')
+  assert.equal(entries[0].createdAt, '2026-05-20')
+})
+
+test('normalizeStatusEntries preserves urgent status', () => {
+  const entries = normalizeStatusEntries({
+    statusEntries: [
+      {
+        id: 'urgent',
+        category: 'Marketing',
+        title: 'Frist',
+        status: 'Dringend',
+        updatedAt: '2026-05-21',
+        description: 'Bitte zeitnah prüfen.',
+      },
+    ],
+  })
+
+  assert.equal(entries[0].category, 'Marketing & Sichtbarkeit')
+  assert.equal(entries[0].status, 'Dringend')
 })
 
 test('normalizeStatusEntries returns provided fallback for malformed data', () => {
