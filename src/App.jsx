@@ -1,23 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-
-const categories = [
-  'Finanzen & Expertenzahlungen',
-  'Marketing',
-  'Abstimmung & Organisation',
-  'Sonstiges',
-]
-
-const categoryMigration = {
-  'Finanzierung & Bank': 'Finanzen & Expertenzahlungen',
-  Organisation: 'Abstimmung & Organisation',
-}
-
-const statusOptions = [
-  'Antwort ausstehend',
-  'In Bearbeitung',
-  'Abgeschlossen',
-  'Dringend',
-]
+import { StatusPage } from './statusShared.jsx'
+import {
+  categories,
+  createInitialStatusEntries,
+  formatDate,
+  normalizeStatusEntries,
+  statusOptions,
+} from './statusData.js'
 
 const emptyStatusEntry = {
   category: categories[0],
@@ -33,52 +22,18 @@ const emptyTask = {
   dueDate: new Date().toISOString().slice(0, 10),
   reminderInterval: 'einmalig',
   notes: '',
-  visibility: 'nur intern',
   completed: false,
 }
 
 const initialData = {
-  statusEntries: [
-    {
-      id: crypto.randomUUID(),
-      category: 'Finanzen & Expertenzahlungen',
-      title: 'Rückmeldung Zahlungsunterlagen',
-      status: 'Antwort ausstehend',
-      updatedAt: '2026-05-18',
-      description:
-        'Die eingereichten Unterlagen liegen zur Prüfung vor. Der nächste Stand wird nach Eingang der Rückmeldung ergänzt.',
-    },
-    {
-      id: crypto.randomUUID(),
-      category: 'Marketing',
-      title: 'Abstimmung Kampagnenmaterial',
-      status: 'In Bearbeitung',
-      updatedAt: '2026-05-20',
-      description:
-        'Entwürfe werden intern konsolidiert und anschließend für die Freigabe vorbereitet.',
-    },
-    {
-      id: crypto.randomUUID(),
-      category: 'Abstimmung & Organisation',
-      title: 'Terminplanung Expertenrunde',
-      status: 'Abgeschlossen',
-      updatedAt: '2026-05-16',
-      description:
-        'Die Terminserie ist bestätigt. Weitere Änderungen werden separat dokumentiert.',
-    },
-  ],
+  statusEntries: createInitialStatusEntries(),
   tasks: [],
 }
 
 function normalizeData(rawData) {
   return {
-    statusEntries: Array.isArray(rawData.statusEntries)
-      ? rawData.statusEntries.map((entry) => ({
-          ...entry,
-          category: categoryMigration[entry.category] || entry.category,
-        }))
-      : initialData.statusEntries,
-    tasks: Array.isArray(rawData.tasks)
+    statusEntries: normalizeStatusEntries(rawData, initialData.statusEntries),
+    tasks: Array.isArray(rawData?.tasks)
       ? rawData.tasks.map((task) => ({
           ...task,
           completed: Boolean(task.completed),
@@ -101,8 +56,16 @@ async function saveData(nextData) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(normalizeData(nextData)),
   })
-  if (!response.ok) throw new Error('Statusdaten konnten nicht gespeichert werden.')
-  return normalizeData(await response.json())
+  const payload = await response.json().catch(() => null)
+  if (!response.ok) {
+    const details = Array.isArray(payload?.details) ? ` ${payload.details.join(' ')}` : ''
+    throw new Error(
+      payload?.error
+        ? `${payload.error}${details}`
+        : 'Statusdaten konnten nicht gespeichert werden.',
+    )
+  }
+  return normalizeData(payload)
 }
 
 function daysUntil(dateValue) {
@@ -110,15 +73,6 @@ function daysUntil(dateValue) {
   today.setHours(0, 0, 0, 0)
   const target = new Date(`${dateValue}T00:00:00`)
   return Math.ceil((target - today) / 86400000)
-}
-
-function formatDate(dateValue) {
-  if (!dateValue) return 'Kein Datum'
-  return new Intl.DateTimeFormat('de-DE', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-  }).format(new Date(`${dateValue}T00:00:00`))
 }
 
 function getDueTasks(tasks, days) {
@@ -133,7 +87,9 @@ function getDueTasks(tasks, days) {
 function App({ adminOnly = false }) {
   const [data, setData] = useState(initialData)
   const [syncState, setSyncState] = useState('loading')
+  const [syncError, setSyncError] = useState('')
   const [path, setPath] = useState(adminOnly ? '/intern' : window.location.pathname)
+  const saveRequestId = useRef(0)
 
   useEffect(() => {
     let active = true
@@ -141,10 +97,12 @@ function App({ adminOnly = false }) {
       .then((remoteData) => {
         if (!active) return
         setData(remoteData)
+        setSyncError('')
         setSyncState('ready')
       })
-      .catch(() => {
+      .catch((error) => {
         if (!active) return
+        setSyncError(error.message)
         setSyncState('error')
       })
     return () => {
@@ -170,14 +128,21 @@ function App({ adminOnly = false }) {
   }
 
   async function updateData(nextData) {
+    const requestId = saveRequestId.current + 1
+    saveRequestId.current = requestId
     const normalizedData = normalizeData(nextData)
     setData(normalizedData)
+    setSyncError('')
     setSyncState('saving')
     try {
       const savedData = await saveData(normalizedData)
+      if (requestId !== saveRequestId.current) return
       setData(savedData)
+      setSyncError('')
       setSyncState('saved')
-    } catch {
+    } catch (error) {
+      if (requestId !== saveRequestId.current) return
+      setSyncError(error.message)
       setSyncState('error')
     }
   }
@@ -187,7 +152,7 @@ function App({ adminOnly = false }) {
   return (
     <div className="min-h-screen">
       <TopNavigation path={path} navigate={navigate} adminOnly={adminOnly} />
-      <SyncBanner syncState={syncState} adminOnly={adminOnly} />
+      <SyncBanner syncState={syncState} syncError={syncError} adminOnly={adminOnly} />
       {isIntern && upcomingSevenDays.length > 0 && (
         <div className="border-b border-amber-200 bg-amber-100/80">
           <div className="mx-auto flex max-w-7xl flex-col gap-2 px-4 py-3 text-sm text-amber-950 sm:flex-row sm:items-center sm:justify-between">
@@ -208,7 +173,7 @@ function App({ adminOnly = false }) {
   )
 }
 
-function SyncBanner({ syncState, adminOnly }) {
+function SyncBanner({ syncState, syncError, adminOnly }) {
   if (syncState === 'ready' || syncState === 'saved') return null
   if (!adminOnly && syncState !== 'error') return null
 
@@ -228,7 +193,13 @@ function SyncBanner({ syncState, adminOnly }) {
       }`}
     >
       <div className="mx-auto max-w-7xl">
-        {adminOnly ? messages[syncState] : syncState === 'error' ? messages.error : null}
+        {syncState === 'error' && syncError
+          ? syncError
+          : adminOnly
+            ? messages[syncState]
+            : syncState === 'error'
+              ? messages.error
+              : null}
       </div>
     </div>
   )
@@ -280,96 +251,6 @@ function NavButton({ active, children, onClick }) {
     >
       {children}
     </button>
-  )
-}
-
-function StatusPage({ statusEntries }) {
-  const groupedEntries = categories.map((category) => ({
-    category,
-    entries: statusEntries.filter((entry) => entry.category === category),
-  }))
-
-  return (
-    <main className="mx-auto max-w-7xl px-4 py-8">
-      <section className="mb-8 rounded-xl border border-white bg-white/70 p-6 shadow-sm">
-        <div>
-          <p className="mb-2 text-xs font-bold uppercase text-teal-700">
-            Öffentlich lesbar
-          </p>
-          <h2 className="text-3xl font-semibold text-slate-950">
-            Aktueller Stand für Experten
-          </h2>
-          <p className="mt-3 max-w-3xl text-slate-600">
-            Übersicht aller sichtbaren Themen mit Kategorie, Status und letztem
-            dokumentierten Stand.
-          </p>
-        </div>
-      </section>
-
-      <div className="space-y-8">
-        {groupedEntries.map(({ category, entries }) => (
-          <section key={category}>
-            <div className="mb-3 flex items-center justify-between">
-              <h3 className="text-lg font-semibold text-slate-950">{category}</h3>
-              <span className="text-sm text-slate-500">{entries.length} Einträge</span>
-            </div>
-            {entries.length === 0 ? (
-              <EmptyState text="Keine Einträge in dieser Kategorie." />
-            ) : (
-              <div className="grid gap-4 lg:grid-cols-2">
-                {entries.map((entry) => (
-                  <StatusCard key={entry.id} entry={entry} />
-                ))}
-              </div>
-            )}
-          </section>
-        ))}
-      </div>
-    </main>
-  )
-}
-
-function StatusCard({ entry }) {
-  const borderStyles = {
-    'Antwort ausstehend': 'border-l-sky-500',
-    'In Bearbeitung': 'border-l-indigo-500',
-    Abgeschlossen: 'border-l-emerald-500',
-    Dringend: 'border-l-rose-500',
-  }
-
-  return (
-    <article
-      className={`rounded-lg border border-l-4 border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md ${borderStyles[entry.status]}`}
-    >
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <p className="text-sm font-semibold text-teal-700">{entry.category}</p>
-          <h4 className="mt-1 text-xl font-semibold text-slate-950">{entry.title}</h4>
-        </div>
-        <StatusBadge status={entry.status} />
-      </div>
-      <p className="mt-4 text-sm leading-6 text-slate-600">{entry.description}</p>
-      <p className="mt-5 inline-flex rounded-md bg-slate-100 px-3 py-1 text-sm text-slate-600">
-        Letzter Stand: <span className="font-medium">{formatDate(entry.updatedAt)}</span>
-      </p>
-    </article>
-  )
-}
-
-function StatusBadge({ status }) {
-  const styles = {
-    'Antwort ausstehend': 'bg-sky-100 text-sky-900 ring-sky-200',
-    'In Bearbeitung': 'bg-indigo-100 text-indigo-900 ring-indigo-200',
-    Abgeschlossen: 'bg-emerald-100 text-emerald-900 ring-emerald-200',
-    Dringend: 'bg-rose-100 text-rose-900 ring-rose-200',
-  }
-
-  return (
-    <span
-      className={`inline-flex w-fit items-center rounded-md px-3 py-1 text-xs font-bold ring-1 ${styles[status]}`}
-    >
-      {status}
-    </span>
   )
 }
 
@@ -596,6 +477,7 @@ function createReminderEmail(tasks) {
 function StatusManager({ statusEntries, setStatusEntries }) {
   const [draft, setDraft] = useState(emptyStatusEntry)
   const [editingId, setEditingId] = useState(null)
+  const [confirmDeleteId, setConfirmDeleteId] = useState(null)
 
   function saveEntry(event) {
     event.preventDefault()
@@ -612,16 +494,19 @@ function StatusManager({ statusEntries, setStatusEntries }) {
     }
     setDraft({ ...emptyStatusEntry, updatedAt: new Date().toISOString().slice(0, 10) })
     setEditingId(null)
+    setConfirmDeleteId(null)
   }
 
   function editEntry(entry) {
     setDraft(entry)
     setEditingId(entry.id)
+    setConfirmDeleteId(null)
   }
 
   function deleteEntry(id) {
     setStatusEntries(statusEntries.filter((entry) => entry.id !== id))
     if (editingId === id) setEditingId(null)
+    setConfirmDeleteId(null)
   }
 
   return (
@@ -635,6 +520,7 @@ function StatusManager({ statusEntries, setStatusEntries }) {
         onCancel={() => {
           setDraft(emptyStatusEntry)
           setEditingId(null)
+          setConfirmDeleteId(null)
         }}
       />
       <div className="mt-6 space-y-3">
@@ -644,7 +530,10 @@ function StatusManager({ statusEntries, setStatusEntries }) {
             title={entry.title}
             meta={`${entry.category} · ${entry.status} · ${formatDate(entry.updatedAt)}`}
             onEdit={() => editEntry(entry)}
-            onDelete={() => deleteEntry(entry.id)}
+            onRequestDelete={() => setConfirmDeleteId(entry.id)}
+            onConfirmDelete={() => deleteEntry(entry.id)}
+            onCancelDelete={() => setConfirmDeleteId(null)}
+            confirmingDelete={confirmDeleteId === entry.id}
           />
         ))}
       </div>
@@ -710,6 +599,7 @@ function EntryForm({ draft, setDraft, onSubmit, editing, onCancel }) {
 function TaskManager({ tasks, setTasks }) {
   const [draft, setDraft] = useState(emptyTask)
   const [editingId, setEditingId] = useState(null)
+  const [confirmDeleteId, setConfirmDeleteId] = useState(null)
 
   function saveTask(event) {
     event.preventDefault()
@@ -722,16 +612,19 @@ function TaskManager({ tasks, setTasks }) {
     }
     setDraft({ ...emptyTask, dueDate: new Date().toISOString().slice(0, 10) })
     setEditingId(null)
+    setConfirmDeleteId(null)
   }
 
   function editTask(task) {
     setDraft(task)
     setEditingId(task.id)
+    setConfirmDeleteId(null)
   }
 
   function deleteTask(id) {
     setTasks(tasks.filter((task) => task.id !== id))
     if (editingId === id) setEditingId(null)
+    setConfirmDeleteId(null)
   }
 
   return (
@@ -745,6 +638,7 @@ function TaskManager({ tasks, setTasks }) {
         onCancel={() => {
           setDraft(emptyTask)
           setEditingId(null)
+          setConfirmDeleteId(null)
         }}
       />
       <div className="mt-6 space-y-3">
@@ -760,7 +654,10 @@ function TaskManager({ tasks, setTasks }) {
               )
             }
             onEdit={() => editTask(task)}
-            onDelete={() => deleteTask(task.id)}
+            onRequestDelete={() => setConfirmDeleteId(task.id)}
+            onConfirmDelete={() => deleteTask(task.id)}
+            onCancelDelete={() => setConfirmDeleteId(null)}
+            confirmingDelete={confirmDeleteId === task.id}
           />
         ))}
       </div>
@@ -796,30 +693,18 @@ function TaskForm({ draft, setDraft, onSubmit, editing, onCancel }) {
           />
         </Field>
       </div>
-      <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Erinnerungsintervall">
-          <select
-            value={draft.reminderInterval}
-            onChange={(event) =>
-              setDraft({ ...draft, reminderInterval: event.target.value })
-            }
-            className={inputClass}
-          >
-            <option>einmalig</option>
-            <option>monatlich wiederkehrend</option>
-          </select>
-        </Field>
-        <Field label="Sichtbarkeit">
-          <select
-            value={draft.visibility}
-            onChange={(event) => setDraft({ ...draft, visibility: event.target.value })}
-            className={inputClass}
-          >
-            <option>öffentlich</option>
-            <option>nur intern</option>
-          </select>
-        </Field>
-      </div>
+      <Field label="Erinnerungsintervall">
+        <select
+          value={draft.reminderInterval}
+          onChange={(event) =>
+            setDraft({ ...draft, reminderInterval: event.target.value })
+          }
+          className={inputClass}
+        >
+          <option>einmalig</option>
+          <option>monatlich wiederkehrend</option>
+        </select>
+      </Field>
       <label className="flex items-center gap-3 rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-medium text-slate-700">
         <input
           type="checkbox"
@@ -935,7 +820,15 @@ function FormActions({ editing, onCancel }) {
   )
 }
 
-function ManageRow({ title, meta, onEdit, onDelete }) {
+function ManageRow({
+  title,
+  meta,
+  onEdit,
+  onRequestDelete,
+  onConfirmDelete,
+  onCancelDelete,
+  confirmingDelete,
+}) {
   return (
     <article className="flex flex-col gap-3 rounded-lg border border-slate-200 bg-slate-50/80 p-4 sm:flex-row sm:items-center sm:justify-between">
       <div>
@@ -943,26 +836,43 @@ function ManageRow({ title, meta, onEdit, onDelete }) {
         <p className="mt-1 text-sm text-slate-500">{meta}</p>
       </div>
       <div className="flex gap-2">
-        <button
-          type="button"
-          onClick={onEdit}
-          className="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-800 shadow-sm hover:bg-slate-100"
-        >
-          Bearbeiten
-        </button>
-        <button
-          type="button"
-          onClick={onDelete}
-          className="rounded-md border border-rose-200 bg-white px-3 py-2 text-sm font-semibold text-rose-700 shadow-sm hover:bg-rose-50"
-        >
-          Löschen
-        </button>
+        {confirmingDelete ? (
+          <DeleteConfirmActions
+            onConfirm={onConfirmDelete}
+            onCancel={onCancelDelete}
+          />
+        ) : (
+          <>
+            <button
+              type="button"
+              onClick={onEdit}
+              className="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-800 shadow-sm hover:bg-slate-100"
+            >
+              Bearbeiten
+            </button>
+            <button
+              type="button"
+              onClick={onRequestDelete}
+              className="rounded-md border border-rose-200 bg-white px-3 py-2 text-sm font-semibold text-rose-700 shadow-sm hover:bg-rose-50"
+            >
+              Löschen
+            </button>
+          </>
+        )}
       </div>
     </article>
   )
 }
 
-function TaskManageRow({ task, onToggle, onEdit, onDelete }) {
+function TaskManageRow({
+  task,
+  onToggle,
+  onEdit,
+  onRequestDelete,
+  onConfirmDelete,
+  onCancelDelete,
+  confirmingDelete,
+}) {
   return (
     <article className="flex flex-col gap-3 rounded-lg border border-slate-200 bg-slate-50/80 p-4 sm:flex-row sm:items-center sm:justify-between">
       <div>
@@ -986,41 +896,63 @@ function TaskManageRow({ task, onToggle, onEdit, onDelete }) {
         </div>
         <p className="mt-1 text-sm text-slate-500">
           {task.owner || 'Ohne Verantwortliche'} · {formatDate(task.dueDate)} ·{' '}
-          {task.visibility} · {task.reminderInterval}
+          {task.reminderInterval}
         </p>
       </div>
       <div className="flex flex-wrap gap-2">
-        <button
-          type="button"
-          onClick={onToggle}
-          className="rounded-md border border-emerald-200 bg-white px-3 py-2 text-sm font-semibold text-emerald-800 shadow-sm hover:bg-emerald-50"
-        >
-          {task.completed ? 'Wieder öffnen' : 'Erledigt'}
-        </button>
-        <button
-          type="button"
-          onClick={onEdit}
-          className="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-800 shadow-sm hover:bg-slate-100"
-        >
-          Bearbeiten
-        </button>
-        <button
-          type="button"
-          onClick={onDelete}
-          className="rounded-md border border-rose-200 bg-white px-3 py-2 text-sm font-semibold text-rose-700 shadow-sm hover:bg-rose-50"
-        >
-          Löschen
-        </button>
+        {confirmingDelete ? (
+          <DeleteConfirmActions
+            onConfirm={onConfirmDelete}
+            onCancel={onCancelDelete}
+          />
+        ) : (
+          <>
+            <button
+              type="button"
+              onClick={onToggle}
+              className="rounded-md border border-emerald-200 bg-white px-3 py-2 text-sm font-semibold text-emerald-800 shadow-sm hover:bg-emerald-50"
+            >
+              {task.completed ? 'Wieder öffnen' : 'Erledigt'}
+            </button>
+            <button
+              type="button"
+              onClick={onEdit}
+              className="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-800 shadow-sm hover:bg-slate-100"
+            >
+              Bearbeiten
+            </button>
+            <button
+              type="button"
+              onClick={onRequestDelete}
+              className="rounded-md border border-rose-200 bg-white px-3 py-2 text-sm font-semibold text-rose-700 shadow-sm hover:bg-rose-50"
+            >
+              Löschen
+            </button>
+          </>
+        )}
       </div>
     </article>
   )
 }
 
-function EmptyState({ text }) {
+function DeleteConfirmActions({ onConfirm, onCancel }) {
   return (
-    <div className="rounded-lg border border-dashed border-slate-300 bg-white/80 p-5 text-sm text-slate-500">
-      {text}
-    </div>
+    <>
+      <button
+        type="button"
+        onClick={onConfirm}
+        className="rounded-md bg-rose-700 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-rose-800"
+      >
+        Löschen bestätigen
+      </button>
+      <button
+        type="button"
+        onClick={onCancel}
+        className="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-800 shadow-sm hover:bg-slate-100"
+      >
+        Abbrechen
+      </button>
+    </>
   )
 }
 
