@@ -2,7 +2,7 @@ import { categories, formatDate } from './statusData.js'
 
 export function StatusPage({
   statusEntries,
-  intro = 'Übersicht aller sichtbaren Themen mit Kategorie, Status und letztem dokumentierten Stand.',
+  intro = 'Alle aktuellen Themen, Aufgaben und Infos auf einen Blick.',
 }) {
   const groupedEntries = categories.map((category) => ({
     category,
@@ -14,10 +14,10 @@ export function StatusPage({
       <section className="mb-8 rounded-xl border border-white bg-white/70 p-6 shadow-sm">
         <div>
           <p className="mb-2 text-xs font-bold uppercase text-teal-700">
-            Öffentlich lesbar
+            Für alle Experten
           </p>
           <h2 className="text-3xl font-semibold text-slate-950">
-            Aktueller Stand für Experten
+            Was gerade wichtig ist
           </h2>
           <p className="mt-3 max-w-3xl text-slate-600">{intro}</p>
         </div>
@@ -28,10 +28,12 @@ export function StatusPage({
           <section key={category}>
             <div className="mb-3 flex items-center justify-between">
               <h3 className="text-lg font-semibold text-slate-950">{category}</h3>
-              <span className="text-sm text-slate-500">{entries.length} Einträge</span>
+              <span className="text-sm text-slate-500">
+                {entries.length === 0 ? 'Keine Einträge' : `${entries.length} Einträge`}
+              </span>
             </div>
             {entries.length === 0 ? (
-              <EmptyState text="Keine Einträge in dieser Kategorie." />
+              <EmptyState text="Aktuell nichts Neues – schau später wieder vorbei." />
             ) : (
               <div className="grid gap-4 lg:grid-cols-2">
                 {entries.map((entry) => (
