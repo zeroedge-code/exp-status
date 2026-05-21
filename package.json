@@ -10,6 +10,7 @@
     "build:admin": "VITE_APP_TARGET=admin vite build --outDir dist-admin",
     "build:all": "npm run build:status && npm run build:admin",
     "lint": "eslint .",
+    "test": "node --test",
     "preview": "vite preview"
   },
   "dependencies": {
