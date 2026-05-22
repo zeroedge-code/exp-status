@@ -12,7 +12,6 @@ const statusConfig = {
     badgeBg: '#FAEEDA',
     progress: 33,
     step: 'Schritt 1 von 3: Rückmeldung',
-    icon: 'ti-file-invoice',
   },
   Neu: {
     key: 'neu',
@@ -22,7 +21,6 @@ const statusConfig = {
     badgeBg: '#E6F1FB',
     progress: 66,
     step: 'Schritt 2 von 3: Vorbereitung',
-    icon: 'ti-speakerphone',
   },
   Erledigt: {
     key: 'erledigt',
@@ -32,8 +30,14 @@ const statusConfig = {
     badgeBg: '#E1F5EE',
     progress: 100,
     step: 'Schritt 3 von 3: Abgeschlossen',
-    icon: 'ti-calendar-check',
   },
+}
+
+const categoryIcons = {
+  'Auszahlungen & Vergütung': 'ti-file-invoice',
+  'Marketing & Sichtbarkeit': 'ti-speakerphone',
+  'Termine & Koordination': 'ti-calendar-check',
+  'Weitere Themen': 'ti-inbox',
 }
 
 export function StatusPage({
@@ -152,7 +156,7 @@ function StatusCard({ entry }) {
           className="flex h-9 w-9 items-center justify-center rounded-[var(--border-radius-md)]"
           style={{ background: config.iconBg, color: config.color }}
         >
-          <StatusIcon icon={config.icon} />
+          <StatusIcon icon={categoryIcons[entry.category] || 'ti-inbox'} />
         </div>
         <div className="min-w-0">
           <div className="flex items-start justify-between gap-3">
@@ -253,6 +257,13 @@ function StatusIcon({ icon }) {
         <path d="M8 3v4" />
         <path d="M4 11h16" />
         <path d="m15 19 2 2 4-4" />
+      </>
+    ),
+    'ti-inbox': (
+      <>
+        <path d="M4 4h16v12a2 2 0 0 1-2 2h-4l-2 3-2-3H6a2 2 0 0 1-2-2V4z" />
+        <path d="M8 9h8" />
+        <path d="M8 13h5" />
       </>
     ),
   }
