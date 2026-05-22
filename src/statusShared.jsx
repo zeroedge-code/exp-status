@@ -60,22 +60,24 @@ export function StatusPage({
 
   return (
     <main className="mx-auto max-w-7xl px-4 pb-10">
-      <header className="sticky top-0 z-20 -mx-4 border-b border-[var(--color-border-tertiary)] bg-[rgba(244,245,247,0.95)] px-4 py-4 backdrop-blur-md">
-        <div className="mx-auto flex max-w-7xl flex-col gap-1">
+      <header className="board-header sticky top-0 z-20 -mx-4 px-4 py-3">
+        <div className="mx-auto flex max-w-7xl flex-col gap-2">
           <div className="flex items-center justify-between gap-4">
-            <div className="flex items-center gap-2">
-              <span className="status-pulse h-2 w-2 rounded-full bg-[#f5a623]" />
-              <span className="text-[15px] font-semibold tracking-[-0.01em] text-[var(--color-text-primary)]">
-                <span className="text-[#f5a623]">expertiger</span> · Board
-              </span>
+            <div className="flex min-w-0 items-center gap-3">
+              <span className="status-pulse h-2.5 w-2.5 shrink-0 rounded-full bg-[#94a3b8] ring-4 ring-slate-200/70" />
+              <div className="min-w-0">
+                <p className="truncate text-lg font-semibold leading-tight text-[var(--color-text-primary)]">
+                  Statusmeldungen
+                </p>
+                <p className="mt-0.5 truncate text-xs text-[var(--color-text-secondary)]">
+                  {latestUpdate ? `Stand: ${formatRelativeDate(latestUpdate)} · ${totalEntries} Einträge` : intro}
+                </p>
+              </div>
             </div>
-            <time className="font-mono text-[11px] tracking-[0.04em] text-[var(--color-text-secondary)]">
+            <time className="shrink-0 rounded-full border border-[var(--color-border-tertiary)] bg-white/70 px-3 py-1 font-mono text-xs tracking-[0.03em] text-[var(--color-text-secondary)] shadow-sm">
               {formatCurrentTime()}
             </time>
           </div>
-          <p className="text-[11px] tracking-[0.02em] text-[var(--color-text-secondary)]">
-            {latestUpdate ? `Stand: ${formatRelativeDate(latestUpdate)} · ${totalEntries} Einträge` : intro}
-          </p>
         </div>
       </header>
 
@@ -91,7 +93,7 @@ export function StatusPage({
               <span className="block font-mono text-[28px] font-medium leading-none" style={{ color: statusConfig[status].color }}>
                 {count}
               </span>
-              <span className="mt-1 block text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--color-text-secondary)]">
+              <span className="mt-1 block text-xs font-semibold uppercase tracking-[0.06em] text-[var(--color-text-secondary)]">
                 {status}
               </span>
             </button>
@@ -109,14 +111,14 @@ export function StatusPage({
                 key={filter}
                 type="button"
                 onClick={() => setActiveFilter(filterKey)}
-                className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border px-3.5 py-1.5 text-xs font-medium transition ${
+                className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border px-4 py-2 text-sm font-medium transition ${
                   isActive
-                    ? 'border-[#f5a623] bg-[#f5a623] text-white'
+                    ? 'border-slate-300 bg-slate-900 text-white'
                     : 'border-[var(--color-border-tertiary)] bg-[var(--color-background-primary)] text-[var(--color-text-tertiary)] hover:border-[var(--color-border-secondary)]'
                 }`}
               >
                 {filter}
-                <span className={`rounded-full px-1.5 py-0.5 font-mono text-[10px] ${
+                <span className={`rounded-full px-1.5 py-0.5 font-mono text-xs ${
                   isActive ? 'bg-black/20 text-white' : 'bg-black/[0.06] text-[var(--color-text-secondary)]'
                 }`}>
                   {getFilterCount(statusEntries, filterKey)}
@@ -136,10 +138,10 @@ export function StatusPage({
                 <div className="flex h-6 w-6 items-center justify-center rounded-[7px] bg-[var(--color-background-secondary)] text-[var(--color-text-secondary)]">
                   <StatusIcon icon={categoryIcons[category] || 'ti-inbox'} />
                 </div>
-                <h2 className="flex-1 text-xs font-semibold uppercase tracking-[0.08em] text-[var(--color-text-secondary)]">
+                <h2 className="flex-1 text-sm font-semibold uppercase tracking-[0.06em] text-[var(--color-text-secondary)]">
                   {category}
                 </h2>
-                <span className="rounded-full bg-[var(--color-background-secondary)] px-2 py-0.5 font-mono text-[10px] text-[var(--color-text-secondary)]">
+                <span className="rounded-full bg-[var(--color-background-secondary)] px-2 py-0.5 font-mono text-xs text-[var(--color-text-secondary)]">
                   {visibleEntries.length}
                 </span>
               </div>
@@ -174,7 +176,7 @@ function StatusCard({ entry }) {
       <div className="absolute bottom-0 left-0 top-0 w-[3px]" style={{ background: getStripeColor(status, priority, type) }} />
       <div className="pl-2">
         <div className="mb-1.5 flex items-start justify-between gap-2">
-          <h3 className="flex-1 text-sm font-semibold leading-snug text-[var(--color-text-primary)]">
+          <h3 className="flex-1 text-base font-semibold leading-snug text-[var(--color-text-primary)]">
             {entry.title}
           </h3>
           <div className="flex shrink-0 flex-wrap justify-end gap-1.5">
@@ -184,22 +186,22 @@ function StatusCard({ entry }) {
             </Badge>
           </div>
         </div>
-        <p className="mb-2.5 text-xs leading-5 text-[var(--color-text-secondary)]">
+        <p className="mb-3 text-sm leading-6 text-[var(--color-text-secondary)]">
           {entry.description}
         </p>
         {type === 'process' && <ProgressBar config={config} />}
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
             {showDueDate && (
-              <span className={`font-mono text-[11px] font-medium ${getDueClass(dueState)}`}>
+              <span className={`font-mono text-xs font-medium ${getDueClass(dueState)}`}>
                 {getDueText(dueDate)}
               </span>
             )}
-            <span className="text-[10px] text-[var(--color-text-secondary)]">
+            <span className="text-xs text-[var(--color-text-secondary)]">
               {capitalize(formatRelativeUpdated(entry.updatedAt))} aktualisiert
             </span>
           </div>
-          <div className={`inline-flex w-fit items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-medium ${getOwnerClass(owner.key)}`}>
+          <div className={`inline-flex w-fit items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium ${getOwnerClass(owner.key)}`}>
             <div className="h-1.5 w-1.5 rounded-full bg-current" />
             {owner.label}
           </div>
@@ -212,7 +214,7 @@ function StatusCard({ entry }) {
 function ProgressBar({ config }) {
   return (
     <div className="mt-4">
-      <div className="mb-2 flex items-center justify-between gap-3 text-xs text-[var(--color-text-tertiary)]">
+      <div className="mb-2 flex items-center justify-between gap-3 text-sm text-[var(--color-text-tertiary)]">
         <span>Fortschritt</span>
         <span className="text-right">{config.step}</span>
       </div>
