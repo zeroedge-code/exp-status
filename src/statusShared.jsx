@@ -6,28 +6,28 @@ const filterOptions = ['Alle', 'Offen', 'Neu', 'Erledigt', 'Operator', 'Techbudd
 const statusConfig = {
   Offen: {
     key: 'offen',
-    border: '#EF9F27',
-    color: '#854F0B',
-    iconBg: '#FAEEDA',
-    badgeBg: '#FAEEDA',
+    border: '#f0ad4e',
+    color: '#8a5a12',
+    iconBg: '#f7f7f7',
+    badgeBg: '#fff8eb',
     progress: 33,
     step: 'Schritt 1 von 3: Rückmeldung',
   },
   Neu: {
     key: 'neu',
-    border: '#378ADD',
-    color: '#185FA5',
-    iconBg: '#E6F1FB',
-    badgeBg: '#E6F1FB',
+    border: '#337ab7',
+    color: '#2b5f91',
+    iconBg: '#f7f7f7',
+    badgeBg: '#eaf3fb',
     progress: 66,
     step: 'Schritt 2 von 3: Vorbereitung',
   },
   Erledigt: {
     key: 'erledigt',
-    border: '#1D9E75',
-    color: '#0F6E56',
-    iconBg: '#E1F5EE',
-    badgeBg: '#E1F5EE',
+    border: '#5cb85c',
+    color: '#3d7f3d',
+    iconBg: '#f7f7f7',
+    badgeBg: '#eef8ee',
     progress: 100,
     step: 'Schritt 3 von 3: Abgeschlossen',
   },
@@ -64,7 +64,7 @@ export function StatusPage({
         <div className="mx-auto flex max-w-7xl flex-col gap-2">
           <div className="flex items-center justify-between gap-4">
             <div className="flex min-w-0 items-center gap-3">
-              <span className="status-pulse h-2.5 w-2.5 shrink-0 rounded-full bg-[#94a3b8] ring-4 ring-slate-200/70" />
+              <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-[var(--color-accent)] ring-4 ring-[#eaf3fb]" />
               <div className="min-w-0">
                 <p className="truncate text-lg font-semibold leading-tight text-[var(--color-text-primary)]">
                   Statusmeldungen
@@ -74,7 +74,7 @@ export function StatusPage({
                 </p>
               </div>
             </div>
-            <time className="shrink-0 rounded-full border border-[var(--color-border-tertiary)] bg-white/70 px-3 py-1 font-mono text-xs tracking-[0.03em] text-[var(--color-text-secondary)] shadow-sm">
+            <time className="shrink-0 rounded-full border border-[#d6d6d6] bg-white px-3 py-1 font-mono text-xs tracking-[0.03em] text-[var(--color-text-secondary)]">
               {formatCurrentTime()}
             </time>
           </div>
@@ -88,7 +88,7 @@ export function StatusPage({
               key={status}
               type="button"
               onClick={() => setActiveFilter(statusConfig[status].key)}
-              className={`status-stat-card status-stat-${statusConfig[status].key} rounded-[var(--border-radius-lg)] border border-[var(--color-border-tertiary)] bg-[var(--color-background-primary)] px-3 py-4 text-center transition active:scale-[0.97]`}
+              className={`status-stat-card status-stat-${statusConfig[status].key} rounded-[var(--border-radius-lg)] border border-[var(--color-border-tertiary)] bg-[var(--color-background-primary)] px-3 py-4 text-center transition hover:border-[var(--color-border-secondary)]`}
             >
               <span className="block font-mono text-[28px] font-medium leading-none" style={{ color: statusConfig[status].color }}>
                 {count}
@@ -113,13 +113,13 @@ export function StatusPage({
                 onClick={() => setActiveFilter(filterKey)}
                 className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border px-4 py-2 text-sm font-medium transition ${
                   isActive
-                    ? 'border-slate-300 bg-slate-900 text-white'
-                    : 'border-[var(--color-border-tertiary)] bg-[var(--color-background-primary)] text-[var(--color-text-tertiary)] hover:border-[var(--color-border-secondary)]'
+                    ? 'border-[var(--color-accent)] bg-[var(--color-accent)] text-white'
+                    : 'border-[var(--color-border-tertiary)] bg-[var(--color-background-secondary)] text-[var(--color-text-secondary)] hover:border-[var(--color-border-secondary)] hover:bg-white'
                 }`}
               >
                 {filter}
                 <span className={`rounded-full px-1.5 py-0.5 font-mono text-xs ${
-                  isActive ? 'bg-black/20 text-white' : 'bg-black/[0.06] text-[var(--color-text-secondary)]'
+                  isActive ? 'bg-black/20 text-white' : 'bg-white text-[var(--color-text-secondary)]'
                 }`}>
                   {getFilterCount(statusEntries, filterKey)}
                 </span>
@@ -169,7 +169,7 @@ function StatusCard({ entry }) {
 
   return (
     <article
-      className="status-card-animation relative overflow-hidden rounded-[var(--border-radius-lg)] border border-[var(--color-border-tertiary)] bg-[var(--color-background-primary)] px-4 py-3.5 shadow-sm transition hover:border-[var(--color-border-secondary)] hover:shadow-md active:scale-[0.985]"
+      className="status-card-animation relative overflow-hidden rounded-[var(--border-radius-lg)] border border-[var(--color-border-tertiary)] bg-[var(--color-background-primary)] px-4 py-3.5 transition hover:border-[var(--color-border-secondary)]"
       data-status={config.key}
       data-owner={owner.key}
     >
@@ -231,8 +231,8 @@ function ProgressBar({ config }) {
 function PriorityBadge({ priority }) {
   const style =
     priority === 'Hohe Priorität'
-      ? { background: '#FCEBEB', color: '#A32D2D' }
-      : { background: '#FAEEDA', color: '#633806' }
+      ? { background: '#f9eeee', color: '#a94442' }
+      : { background: '#fff8eb', color: '#8a5a12' }
 
   return <Badge {...style}>{priority}</Badge>
 }
@@ -240,8 +240,8 @@ function PriorityBadge({ priority }) {
 function Badge({ background, color, children }) {
   return (
     <span
-      className="inline-flex items-center rounded-[var(--border-radius-md)] px-2 py-1 text-xs font-medium"
-      style={{ background, color }}
+      className="inline-flex items-center rounded-[var(--border-radius-md)] border px-2 py-1 text-xs font-medium"
+      style={{ background, color, borderColor: color === '#2b5f91' ? '#c9dced' : 'rgba(0,0,0,0.12)' }}
     >
       {children}
     </span>
@@ -364,18 +364,18 @@ function getPriority(entry) {
 }
 
 function getStripeColor(status, priority, type) {
-  if (status === 'Erledigt') return '#1D9E75'
-  if (type === 'info') return '#378ADD'
-  if (priority === 'Hohe Priorität') return '#dc2626'
-  if (priority === 'Mittlere Priorität') return '#ea580c'
+  if (status === 'Erledigt') return '#5cb85c'
+  if (type === 'info') return '#337ab7'
+  if (priority === 'Hohe Priorität') return '#d9534f'
+  if (priority === 'Mittlere Priorität') return '#f0ad4e'
   return statusConfig[status].border
 }
 
 function getOwnerClass(ownerKey) {
   if (ownerKey === 'techbuddy') {
-    return 'border-[#bfdbfe] bg-[#eff6ff] text-[#1e40af]'
+    return 'border-[#c9dced] bg-[#f3f8fc] text-[#337ab7]'
   }
-  return 'border-[#bbf7d0] bg-[#f0fdf4] text-[#166534]'
+  return 'border-[#d6d6d6] bg-[#f7f7f7] text-[#555555]'
 }
 
 function getDueDate(entry) {
@@ -411,8 +411,8 @@ function getDueState(date) {
 
 function getDueClass(state) {
   const styles = {
-    overdue: 'text-[#dc2626]',
-    today: 'text-[#ea580c]',
+    overdue: 'text-[#d9534f]',
+    today: 'text-[#8a5a12]',
     soon: 'text-[var(--color-text-secondary)]',
     future: 'text-[var(--color-text-secondary)]',
   }
