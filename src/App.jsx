@@ -366,114 +366,135 @@ function StatusManager({ statusEntries, setStatusEntries }) {
 
 function EntryForm({ draft, setDraft, onSubmit, editing, onCancel }) {
   return (
-    <form onSubmit={onSubmit} className="mt-5 grid gap-4">
-      <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Kategorie">
-          <select
-            value={draft.category}
-            onChange={(event) => setDraft({ ...draft, category: event.target.value })}
-            className={inputClass}
-          >
-            {categories.map((category) => (
-              <option key={category}>{category}</option>
-            ))}
-          </select>
-        </Field>
-        <Field label="Status">
-          <select
-            value={draft.status}
-            onChange={(event) => setDraft({ ...draft, status: event.target.value })}
-            className={inputClass}
-          >
-            {statusOptions.map((status) => (
-              <option key={status}>{status}</option>
-            ))}
-          </select>
-        </Field>
-      </div>
-      <Field label="Titel">
-        <input
-          value={draft.title}
-          onChange={(event) => setDraft({ ...draft, title: event.target.value })}
-          className={inputClass}
-          required
-        />
-      </Field>
-      <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Verantwortlicher">
-          <select
-            value={draft.owner}
-            onChange={(event) => setDraft({ ...draft, owner: event.target.value })}
-            className={inputClass}
-          >
-            {ownerOptions.map((owner) => (
-              <option key={owner}>{owner}</option>
-            ))}
-          </select>
-        </Field>
-        <Field label="Typ">
-          <select
-            value={draft.type}
-            onChange={(event) => {
-              const type = event.target.value
-              setDraft({
-                ...draft,
-                type,
-                showProgress: type === 'process',
-                priority: type === 'info' ? '' : draft.priority || priorityOptions[0],
-              })
-            }}
-            className={inputClass}
-          >
-            {typeOptions.map((type) => (
-              <option key={type} value={type}>
-                {formatType(type)}
-              </option>
-            ))}
-          </select>
-        </Field>
-      </div>
-      <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Priorität">
-          <select
-            value={draft.priority}
-            onChange={(event) => setDraft({ ...draft, priority: event.target.value })}
-            className={inputClass}
-          >
-            <option value="">Keine Priorität</option>
-            {priorityOptions.map((priority) => (
-              <option key={priority}>{priority}</option>
-            ))}
-          </select>
-        </Field>
-      </div>
-      <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Datum letzter Stand">
+    <form onSubmit={onSubmit} className="mt-5 grid gap-5">
+      <FormSection title="Inhalt">
+        <Field label="Titel">
           <input
-            type="date"
-            value={draft.updatedAt}
-            onChange={(event) => setDraft({ ...draft, updatedAt: event.target.value })}
+            value={draft.title}
+            onChange={(event) => setDraft({ ...draft, title: event.target.value })}
             className={inputClass}
+            required
           />
         </Field>
-        <Field label="Fälligkeitsdatum">
-          <input
-            type="date"
-            value={draft.dueDate}
-            onChange={(event) => setDraft({ ...draft, dueDate: event.target.value })}
-            className={inputClass}
+        <Field label="Beschreibung">
+          <textarea
+            value={draft.description}
+            onChange={(event) => setDraft({ ...draft, description: event.target.value })}
+            className={`${inputClass} min-h-28`}
           />
         </Field>
-      </div>
-      <Field label="Beschreibung">
-        <textarea
-          value={draft.description}
-          onChange={(event) => setDraft({ ...draft, description: event.target.value })}
-          className={`${inputClass} min-h-28`}
-        />
-      </Field>
+      </FormSection>
+
+      <FormSection title="Einordnung">
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field label="Kategorie">
+            <select
+              value={draft.category}
+              onChange={(event) => setDraft({ ...draft, category: event.target.value })}
+              className={inputClass}
+            >
+              {categories.map((category) => (
+                <option key={category}>{category}</option>
+              ))}
+            </select>
+          </Field>
+          <Field label="Typ">
+            <select
+              value={draft.type}
+              onChange={(event) => {
+                const type = event.target.value
+                setDraft({
+                  ...draft,
+                  type,
+                  showProgress: type === 'process',
+                  priority: type === 'info' ? '' : draft.priority || priorityOptions[0],
+                })
+              }}
+              className={inputClass}
+            >
+              {typeOptions.map((type) => (
+                <option key={type} value={type}>
+                  {formatType(type)}
+                </option>
+              ))}
+            </select>
+          </Field>
+        </div>
+      </FormSection>
+
+      <FormSection title="Status & Verantwortung">
+        <div className="grid gap-4 sm:grid-cols-3">
+          <Field label="Status">
+            <select
+              value={draft.status}
+              onChange={(event) => setDraft({ ...draft, status: event.target.value })}
+              className={inputClass}
+            >
+              {statusOptions.map((status) => (
+                <option key={status}>{status}</option>
+              ))}
+            </select>
+          </Field>
+          <Field label="Priorität">
+            <select
+              value={draft.priority}
+              onChange={(event) => setDraft({ ...draft, priority: event.target.value })}
+              className={inputClass}
+            >
+              <option value="">Keine Priorität</option>
+              {priorityOptions.map((priority) => (
+                <option key={priority}>{priority}</option>
+              ))}
+            </select>
+          </Field>
+          <Field label="Verantwortlicher">
+            <select
+              value={draft.owner}
+              onChange={(event) => setDraft({ ...draft, owner: event.target.value })}
+              className={inputClass}
+            >
+              {ownerOptions.map((owner) => (
+                <option key={owner}>{owner}</option>
+              ))}
+            </select>
+          </Field>
+        </div>
+      </FormSection>
+
+      <FormSection title="Termine">
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field label="Datum letzter Stand">
+            <input
+              type="date"
+              value={draft.updatedAt}
+              onChange={(event) => setDraft({ ...draft, updatedAt: event.target.value })}
+              className={inputClass}
+            />
+          </Field>
+          <Field label="Fälligkeitsdatum">
+            <input
+              type="date"
+              value={draft.dueDate}
+              onChange={(event) => setDraft({ ...draft, dueDate: event.target.value })}
+              className={inputClass}
+            />
+          </Field>
+        </div>
+      </FormSection>
+
       <FormActions editing={editing} onCancel={onCancel} />
     </form>
+  )
+}
+
+function FormSection({ title, children }) {
+  return (
+    <fieldset className="rounded-lg border border-slate-200 bg-slate-50/60 p-4">
+      <legend className="px-1 text-xs font-bold uppercase tracking-wide text-slate-500">
+        {title}
+      </legend>
+      <div className="mt-2 grid gap-4">{children}</div>
+    </fieldset>
   )
 }
 
