@@ -72,7 +72,7 @@ function StatusCard({ entry }) {
       </div>
       <p className="mt-4 text-sm leading-6 text-slate-600">{entry.description}</p>
       <p className="mt-5 inline-flex rounded-md bg-slate-100 px-3 py-1 text-sm text-slate-600">
-        Letzter Stand: <span className="font-medium">{formatDate(entry.updatedAt)}</span>
+        Letzter Stand:<span className="ml-1 font-medium">{formatDate(entry.updatedAt)}</span>
       </p>
     </article>
   )
