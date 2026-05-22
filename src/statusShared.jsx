@@ -140,9 +140,11 @@ function StatusCard({ entry }) {
   const status = normalizeKnownStatus(entry.status)
   const config = statusConfig[status]
   const owner = getOwner(entry)
+  const type = getEntryType(entry)
   const priority = getPriority(entry)
   const dueDate = getDueDate(entry)
-  const dueSoon = getDaysUntil(dueDate) < 5
+  const showDueDate = type !== 'info'
+  const dueSoon = showDueDate && getDaysUntil(dueDate) < 5
 
   return (
     <article
@@ -164,7 +166,7 @@ function StatusCard({ entry }) {
               {entry.category}
             </p>
             <div className="flex shrink-0 flex-wrap justify-end gap-1.5">
-              {priority && <PriorityBadge priority={priority} />}
+              {type !== 'info' && priority && <PriorityBadge priority={priority} />}
               <Badge background={config.badgeBg} color={config.color}>
                 {status}
               </Badge>
@@ -176,12 +178,14 @@ function StatusCard({ entry }) {
           <p className="mt-3 text-sm leading-6 text-[var(--color-text-secondary)]">
             {entry.description}
           </p>
-          {entry.showProgress && <ProgressBar config={config} />}
+          {type === 'process' && <ProgressBar config={config} />}
           <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-[var(--color-text-tertiary)]">
-              <span className={dueSoon ? 'font-medium text-[#A32D2D]' : ''}>
-                Fällig {formatDate(toDateInputValue(dueDate))}
-              </span>
+              {showDueDate && (
+                <span className={dueSoon ? 'font-medium text-[#A32D2D]' : ''}>
+                  Fällig {formatDate(toDateInputValue(dueDate))}
+                </span>
+              )}
               <span>{capitalize(formatRelativeUpdated(entry.updatedAt))} aktualisiert</span>
             </div>
             <div className="owner inline-flex w-fit items-center gap-2 rounded-[var(--border-radius-md)] border-[0.5px] border-[var(--color-border-tertiary)] bg-[var(--color-background-secondary)] px-2.5 py-1 text-xs font-medium text-[var(--color-text-secondary)]">
@@ -313,6 +317,13 @@ function normalizeKnownStatus(status) {
 
 function normalizeStatus(status) {
   return normalizeKnownStatus(status).toLowerCase()
+}
+
+function getEntryType(entry) {
+  if (entry.type === 'process') return 'process'
+  if (entry.type === 'task') return 'task'
+  if (entry.showProgress) return 'process'
+  return 'info'
 }
 
 function getOwner(entry) {

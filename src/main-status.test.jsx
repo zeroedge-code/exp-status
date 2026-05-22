@@ -32,7 +32,7 @@ test('shows status entries loaded from the API', async () => {
     }),
   ).toBeInTheDocument()
   expect(screen.getByText('Bitte final prüfen.')).toBeInTheDocument()
-  expect(screen.getByText('Hohe Priorität')).toBeInTheDocument()
+  expect(screen.queryByText('Hohe Priorität')).not.toBeInTheDocument()
   expect(screen.getAllByText('Offen').length).toBeGreaterThan(0)
   expect(screen.getByText('Heute aktualisiert')).toBeInTheDocument()
   expect(screen.queryByText('Fortschritt')).not.toBeInTheDocument()

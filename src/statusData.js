@@ -17,6 +17,7 @@ export const categoryMigration = {
 export const statusOptions = ['Neu', 'Dringend', 'Offen', 'Erledigt']
 export const ownerOptions = ['Operator', 'Techbuddy']
 export const priorityOptions = ['Mittlere Priorität', 'Hohe Priorität']
+export const typeOptions = ['info', 'task', 'process']
 
 export const statusMigration = {
   'Antwort ausstehend': 'Offen',
@@ -32,6 +33,7 @@ export function createInitialStatusEntries() {
       title: 'Rückmeldung Zahlungsunterlagen',
       status: 'Offen',
       owner: 'Operator',
+      type: 'task',
       priority: 'Hohe Priorität',
       showProgress: false,
       createdAt: '2026-05-18',
@@ -46,6 +48,7 @@ export function createInitialStatusEntries() {
       title: 'Abstimmung Kampagnenmaterial',
       status: 'Neu',
       owner: 'Techbuddy',
+      type: 'task',
       priority: 'Mittlere Priorität',
       showProgress: false,
       createdAt: '2026-05-20',
@@ -60,6 +63,7 @@ export function createInitialStatusEntries() {
       title: 'Terminplanung Expertenrunde',
       status: 'Erledigt',
       owner: 'Operator',
+      type: 'info',
       priority: '',
       showProgress: false,
       createdAt: '2026-05-16',
@@ -80,10 +84,17 @@ export function normalizeStatusEntries(rawData, fallbackEntries = createInitialS
     status: statusMigration[entry.status] || entry.status,
     createdAt: entry.createdAt || entry.updatedAt,
     owner: ownerOptions.includes(entry.owner) ? entry.owner : inferOwner(entry),
+    type: typeOptions.includes(entry.type) ? entry.type : inferType(entry),
     priority: priorityOptions.includes(entry.priority) ? entry.priority : inferPriority(entry),
-    showProgress: Boolean(entry.showProgress),
+    showProgress: entry.type === 'process' || Boolean(entry.showProgress),
     dueDate: entry.dueDate || inferDueDate(entry),
   }))
+}
+
+function inferType(entry) {
+  if (entry.showProgress) return 'process'
+  if (entry.priority || entry.dueDate) return 'task'
+  return 'info'
 }
 
 function inferOwner(entry) {

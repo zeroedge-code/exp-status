@@ -3,11 +3,11 @@ import { StatusPage } from './statusShared.jsx'
 import {
   categories,
   createInitialStatusEntries,
-  formatDate,
   normalizeStatusEntries,
   ownerOptions,
   priorityOptions,
   statusOptions,
+  typeOptions,
 } from './statusData.js'
 
 const today = new Date().toISOString().slice(0, 10)
@@ -17,7 +17,8 @@ const emptyStatusEntry = {
   title: '',
   status: statusOptions[0],
   owner: ownerOptions[0],
-  priority: priorityOptions[0],
+  type: typeOptions[0],
+  priority: '',
   showProgress: false,
   createdAt: today,
   updatedAt: today,
@@ -350,7 +351,7 @@ function StatusManager({ statusEntries, setStatusEntries }) {
           <ManageRow
             key={entry.id}
             title={entry.title}
-            meta={`${entry.category} · ${entry.status} · ${entry.owner} · fällig ${formatDate(entry.dueDate)}`}
+            meta={`${entry.category} · ${entry.status} · ${entry.owner} · ${formatType(entry.type)}`}
             onEdit={() => editEntry(entry)}
             onRequestDelete={() => setConfirmDeleteId(entry.id)}
             onConfirmDelete={() => deleteEntry(entry.id)}
@@ -410,6 +411,29 @@ function EntryForm({ draft, setDraft, onSubmit, editing, onCancel }) {
             ))}
           </select>
         </Field>
+        <Field label="Typ">
+          <select
+            value={draft.type}
+            onChange={(event) => {
+              const type = event.target.value
+              setDraft({
+                ...draft,
+                type,
+                showProgress: type === 'process',
+                priority: type === 'info' ? '' : draft.priority || priorityOptions[0],
+              })
+            }}
+            className={inputClass}
+          >
+            {typeOptions.map((type) => (
+              <option key={type} value={type}>
+                {formatType(type)}
+              </option>
+            ))}
+          </select>
+        </Field>
+      </div>
+      <div className="grid gap-4 sm:grid-cols-2">
         <Field label="Priorität">
           <select
             value={draft.priority}
@@ -441,15 +465,6 @@ function EntryForm({ draft, setDraft, onSubmit, editing, onCancel }) {
           />
         </Field>
       </div>
-      <label className="flex items-center gap-2 text-sm font-medium text-slate-700">
-        <input
-          type="checkbox"
-          checked={Boolean(draft.showProgress)}
-          onChange={(event) => setDraft({ ...draft, showProgress: event.target.checked })}
-          className="h-4 w-4 rounded border-slate-300 text-teal-800 focus:ring-teal-700"
-        />
-        Fortschrittsbalken anzeigen
-      </label>
       <Field label="Beschreibung">
         <textarea
           value={draft.description}
@@ -464,6 +479,15 @@ function EntryForm({ draft, setDraft, onSubmit, editing, onCancel }) {
 
 const inputClass =
   'mt-2 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-950 outline-none transition focus:border-teal-700 focus:ring-2 focus:ring-teal-100'
+
+function formatType(type) {
+  const labels = {
+    info: 'Info',
+    task: 'Aufgabe',
+    process: 'Prozess',
+  }
+  return labels[type] || 'Info'
+}
 
 function Field({ label, children }) {
   return (

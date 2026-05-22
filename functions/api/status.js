@@ -18,6 +18,7 @@ const categoryMigration = {
 
 const statusOptions = ['Neu', 'Dringend', 'Offen', 'Erledigt']
 const ownerOptions = ['Operator', 'Techbuddy']
+const typeOptions = ['info', 'task', 'process']
 const priorityOptions = ['Mittlere Priorität', 'Hohe Priorität', '']
 
 const statusMigration = {
@@ -37,6 +38,7 @@ const defaultData = {
       title: 'Rückmeldung Zahlungsunterlagen',
       status: 'Offen',
       owner: 'Operator',
+      type: 'task',
       priority: 'Hohe Priorität',
       showProgress: false,
       createdAt: '2026-05-18',
@@ -51,6 +53,7 @@ const defaultData = {
       title: 'Abstimmung Kampagnenmaterial',
       status: 'Neu',
       owner: 'Techbuddy',
+      type: 'task',
       priority: 'Mittlere Priorität',
       showProgress: false,
       createdAt: '2026-05-20',
@@ -65,6 +68,7 @@ const defaultData = {
       title: 'Terminplanung Expertenrunde',
       status: 'Erledigt',
       owner: 'Operator',
+      type: 'info',
       priority: '',
       showProgress: false,
       createdAt: '2026-05-16',
@@ -123,6 +127,12 @@ function inferPriority(status) {
   return 'Mittlere Priorität'
 }
 
+function inferType(entry) {
+  if (entry.showProgress) return 'process'
+  if (entry.priority || entry.dueDate) return 'task'
+  return 'info'
+}
+
 function inferDueDate(entry, status) {
   const dateValue = entry.updatedAt || entry.createdAt
   if (!isValidDateString(dateValue)) return ''
@@ -141,8 +151,9 @@ function normalizeStatusEntry(entry) {
     title: cleanString(entry.title),
     status,
     owner: ownerOptions.includes(entry.owner) ? entry.owner : inferOwner(entry, status),
+    type: typeOptions.includes(entry.type) ? entry.type : inferType(entry),
     priority: priorityOptions.includes(entry.priority) ? entry.priority : inferPriority(status),
-    showProgress: Boolean(entry.showProgress),
+    showProgress: entry.type === 'process' || Boolean(entry.showProgress),
     createdAt: entry.createdAt || entry.updatedAt,
     updatedAt: entry.updatedAt,
     dueDate: entry.dueDate || inferDueDate(entry, status),
@@ -155,6 +166,7 @@ function normalizeStatusEntry(entry) {
     !normalized.title ||
     !statusOptions.includes(normalized.status) ||
     !ownerOptions.includes(normalized.owner) ||
+    !typeOptions.includes(normalized.type) ||
     !priorityOptions.includes(normalized.priority) ||
     !isValidDateString(normalized.createdAt) ||
     !isValidDateString(normalized.updatedAt) ||
