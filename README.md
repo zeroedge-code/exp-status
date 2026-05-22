@@ -21,6 +21,21 @@ Both projects must use the same KV namespace for `STATUS_STORE`. The status proj
 
 Cloudflare Access should protect `exp-status` for experts and admin users, and `exp-status-admin` for the admin email only.
 
+## Iframe Embedding
+
+To embed the status app in a Rails ActiveAdmin page, set this Cloudflare Pages
+environment variable on the app that should be embedded:
+
+- `ALLOWED_FRAME_ANCESTORS='self' https://admin.example.com`
+
+Replace `https://admin.example.com` with the exact Rails ActiveAdmin origin.
+Multiple origins can be separated by spaces or commas. The app will send a
+`Content-Security-Policy` header with `frame-ancestors` and remove
+`X-Frame-Options` for those responses.
+
+The Rails app may also need to allow this app URL in its own CSP, typically via
+`frame-src` or `child-src`.
+
 ## Local Commands
 
 - `npm run build:status`
