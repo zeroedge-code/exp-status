@@ -46,7 +46,7 @@ test('keeps the fallback status view visible and shows an error when loading fai
 
   render(<StatusApp />)
 
-  expect(screen.getByText('Statusmeldungen')).toBeInTheDocument()
+  expect(screen.getByText('expertiger')).toBeInTheDocument()
   expect(
     await screen.findByText('Statusdaten konnten nicht geladen werden.'),
   ).toBeInTheDocument()

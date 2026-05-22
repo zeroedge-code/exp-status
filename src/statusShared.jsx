@@ -46,6 +46,7 @@ export function StatusPage({
 }) {
   const [activeFilter, setActiveFilter] = useState('alle')
   const latestUpdate = getLatestUpdate(statusEntries)
+  const totalEntries = statusEntries.length
   const stats = ['Offen', 'Neu', 'Erledigt'].map((status) => ({
     status,
     count: statusEntries.filter((entry) => normalizeStatus(entry.status) === normalizeStatus(status)).length,
@@ -58,73 +59,91 @@ export function StatusPage({
   })
 
   return (
-    <main className="mx-auto max-w-7xl px-4 py-8">
-      <section className="overflow-hidden rounded-[var(--border-radius-lg)] border border-[var(--color-border-tertiary)] bg-[var(--color-background-primary)] shadow-sm">
-        <div className="grid h-1 grid-cols-3">
-          <div className="bg-[#EF9F27]" />
-          <div className="bg-[#378ADD]" />
-          <div className="bg-[#1D9E75]" />
-        </div>
-        <div className="flex flex-col gap-6 p-5 sm:p-6 lg:flex-row lg:items-center lg:justify-between">
-          <div className="flex max-w-2xl flex-col gap-3">
-            <div className="inline-flex w-fit items-center gap-2 rounded-[var(--border-radius-md)] border-[0.5px] border-[var(--color-border-tertiary)] bg-[var(--color-background-secondary)] px-2.5 py-1 text-xs font-medium uppercase tracking-[0.05em] text-[var(--color-text-secondary)]">
-              <span className="h-1.5 w-1.5 rounded-full bg-[#1D9E75]" />
-              Statusmeldungen
+    <main className="mx-auto max-w-7xl px-4 pb-10">
+      <header className="sticky top-0 z-20 -mx-4 border-b border-[var(--color-border-tertiary)] bg-[rgba(244,245,247,0.95)] px-4 py-4 backdrop-blur-md">
+        <div className="mx-auto flex max-w-7xl flex-col gap-1">
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-2">
+              <span className="status-pulse h-2 w-2 rounded-full bg-[#f5a623]" />
+              <span className="text-[15px] font-semibold tracking-[-0.01em] text-[var(--color-text-primary)]">
+                <span className="text-[#f5a623]">expertiger</span> · Board
+              </span>
             </div>
-            <p className="text-sm text-[var(--color-text-tertiary)]">
-              {latestUpdate ? `Aktualisiert ${formatRelativeDate(latestUpdate)}` : intro}
-            </p>
+            <time className="font-mono text-[11px] tracking-[0.04em] text-[var(--color-text-secondary)]">
+              {formatCurrentTime()}
+            </time>
           </div>
-          <div className="grid grid-cols-3 gap-2 sm:min-w-96">
-            {stats.map(({ status, count }) => (
-              <button
-                key={status}
-                type="button"
-                onClick={() => setActiveFilter(statusConfig[status].key)}
-                className="rounded-[var(--border-radius-md)] border-[0.5px] border-[var(--color-border-tertiary)] bg-[var(--color-background-secondary)] px-3 py-3 text-left transition hover:border-[var(--color-border-secondary)]"
-              >
-                <span className="block text-2xl font-semibold leading-none" style={{ color: statusConfig[status].color }}>
-                  {count}
-                </span>
-                <span className="mt-1 block text-xs font-medium text-[var(--color-text-secondary)]">
-                  {status}
-                </span>
-              </button>
-            ))}
-          </div>
+          <p className="text-[11px] tracking-[0.02em] text-[var(--color-text-secondary)]">
+            {latestUpdate ? `Stand: ${formatRelativeDate(latestUpdate)} · ${totalEntries} Einträge` : intro}
+          </p>
+        </div>
+      </header>
+
+      <section className="pt-5">
+        <div className="grid grid-cols-3 gap-2.5">
+          {stats.map(({ status, count }) => (
+            <button
+              key={status}
+              type="button"
+              onClick={() => setActiveFilter(statusConfig[status].key)}
+              className={`status-stat-card status-stat-${statusConfig[status].key} rounded-[var(--border-radius-lg)] border border-[var(--color-border-tertiary)] bg-[var(--color-background-primary)] px-3 py-4 text-center transition active:scale-[0.97]`}
+            >
+              <span className="block font-mono text-[28px] font-medium leading-none" style={{ color: statusConfig[status].color }}>
+                {count}
+              </span>
+              <span className="mt-1 block text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--color-text-secondary)]">
+                {status}
+              </span>
+            </button>
+          ))}
         </div>
       </section>
 
-      <div className="mt-5 flex flex-wrap gap-2">
-        {filterOptions.map((filter) => {
-          const filterKey = filter.toLowerCase()
-          const isActive = activeFilter === filterKey
-          return (
-            <button
-              key={filter}
-              type="button"
-              onClick={() => setActiveFilter(filterKey)}
-              className={`rounded-[var(--border-radius-md)] px-3 py-1.5 text-sm transition ${
-                isActive
-                  ? 'border border-[var(--color-border-primary)] bg-[var(--color-background-secondary)] font-medium text-[var(--color-text-primary)]'
-                  : 'border-[0.5px] border-[var(--color-border-tertiary)] bg-[var(--color-background-primary)] text-[var(--color-text-secondary)] hover:border-[var(--color-border-secondary)]'
-              }`}
-            >
-              {filter}
-            </button>
-          )
-        })}
+      <div className="-mx-4 mt-4 overflow-x-auto px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <div className="flex w-max gap-2">
+          {filterOptions.map((filter) => {
+            const filterKey = filter.toLowerCase()
+            const isActive = activeFilter === filterKey
+            return (
+              <button
+                key={filter}
+                type="button"
+                onClick={() => setActiveFilter(filterKey)}
+                className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border px-3.5 py-1.5 text-xs font-medium transition ${
+                  isActive
+                    ? 'border-[#f5a623] bg-[#f5a623] text-white'
+                    : 'border-[var(--color-border-tertiary)] bg-[var(--color-background-primary)] text-[var(--color-text-tertiary)] hover:border-[var(--color-border-secondary)]'
+                }`}
+              >
+                {filter}
+                <span className={`rounded-full px-1.5 py-0.5 font-mono text-[10px] ${
+                  isActive ? 'bg-black/20 text-white' : 'bg-black/[0.06] text-[var(--color-text-secondary)]'
+                }`}>
+                  {getFilterCount(statusEntries, filterKey)}
+                </span>
+              </button>
+            )
+          })}
+        </div>
       </div>
 
-      <div className="mt-8 space-y-8">
+      <div className="mt-5 space-y-5">
         {groupedEntries
           .filter(({ visibleEntries }) => visibleEntries.length > 0)
           .map(({ category, visibleEntries }) => (
             <section key={category}>
-              <h2 className="mb-3 text-xs font-medium uppercase tracking-[0.05em] text-[var(--color-text-secondary)]">
-                {category}
-              </h2>
-              <div className="grid gap-4 lg:grid-cols-2">
+              <div className="mb-2.5 flex items-center gap-2">
+                <div className="flex h-6 w-6 items-center justify-center rounded-[7px] bg-[var(--color-background-secondary)] text-[var(--color-text-secondary)]">
+                  <StatusIcon icon={categoryIcons[category] || 'ti-inbox'} />
+                </div>
+                <h2 className="flex-1 text-xs font-semibold uppercase tracking-[0.08em] text-[var(--color-text-secondary)]">
+                  {category}
+                </h2>
+                <span className="rounded-full bg-[var(--color-background-secondary)] px-2 py-0.5 font-mono text-[10px] text-[var(--color-text-secondary)]">
+                  {visibleEntries.length}
+                </span>
+              </div>
+              <div className="grid gap-2 lg:grid-cols-2">
                 {visibleEntries.map((entry) => (
                   <StatusCard key={entry.id} entry={entry} />
                 ))}
@@ -144,54 +163,45 @@ function StatusCard({ entry }) {
   const priority = getPriority(entry)
   const dueDate = getDueDate(entry)
   const showDueDate = type !== 'info'
-  const dueSoon = showDueDate && getDaysUntil(dueDate) < 5
+  const dueState = showDueDate ? getDueState(dueDate) : ''
 
   return (
     <article
-      className="card rounded-r-[var(--border-radius-lg)] border-[0.5px] border-l-[3px] border-[var(--color-border-tertiary)] bg-[var(--color-background-primary)] p-4 shadow-sm transition hover:border-[var(--color-border-secondary)]"
+      className="status-card-animation relative overflow-hidden rounded-[var(--border-radius-lg)] border border-[var(--color-border-tertiary)] bg-[var(--color-background-primary)] px-4 py-3.5 shadow-sm transition hover:border-[var(--color-border-secondary)] hover:shadow-md active:scale-[0.985]"
       data-status={config.key}
       data-owner={owner.key}
-      style={{ borderLeftColor: config.border, borderTopLeftRadius: 0, borderBottomLeftRadius: 0 }}
     >
-      <div className="grid grid-cols-[36px_1fr] gap-3">
-        <div
-          className="flex h-9 w-9 items-center justify-center rounded-[var(--border-radius-md)]"
-          style={{ background: config.iconBg, color: config.color }}
-        >
-          <StatusIcon icon={categoryIcons[entry.category] || 'ti-inbox'} />
-        </div>
-        <div className="min-w-0">
-          <div className="flex items-start justify-between gap-3">
-            <p className="text-xs font-medium text-[var(--color-text-secondary)]">
-              {entry.category}
-            </p>
-            <div className="flex shrink-0 flex-wrap justify-end gap-1.5">
-              {type !== 'info' && priority && <PriorityBadge priority={priority} />}
-              <Badge background={config.badgeBg} color={config.color}>
-                {status}
-              </Badge>
-            </div>
-          </div>
-          <h3 className="mt-1 text-lg font-semibold leading-snug text-[var(--color-text-primary)]">
+      <div className="absolute bottom-0 left-0 top-0 w-[3px]" style={{ background: getStripeColor(status, priority, type) }} />
+      <div className="pl-2">
+        <div className="mb-1.5 flex items-start justify-between gap-2">
+          <h3 className="flex-1 text-sm font-semibold leading-snug text-[var(--color-text-primary)]">
             {entry.title}
           </h3>
-          <p className="mt-3 text-sm leading-6 text-[var(--color-text-secondary)]">
-            {entry.description}
-          </p>
-          {type === 'process' && <ProgressBar config={config} />}
-          <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-[var(--color-text-tertiary)]">
-              {showDueDate && (
-                <span className={dueSoon ? 'font-medium text-[#A32D2D]' : ''}>
-                  Fällig {formatDate(toDateInputValue(dueDate))}
-                </span>
-              )}
-              <span>{capitalize(formatRelativeUpdated(entry.updatedAt))} aktualisiert</span>
-            </div>
-            <div className="owner inline-flex w-fit items-center gap-2 rounded-[var(--border-radius-md)] border-[0.5px] border-[var(--color-border-tertiary)] bg-[var(--color-background-secondary)] px-2.5 py-1 text-xs font-medium text-[var(--color-text-secondary)]">
-              <div className="owner-dot h-2 w-2 rounded-full" style={{ background: config.border }} />
-              {owner.label}
-            </div>
+          <div className="flex shrink-0 flex-wrap justify-end gap-1.5">
+            {type !== 'info' && priority && <PriorityBadge priority={priority} />}
+            <Badge background={config.badgeBg} color={config.color}>
+              {status}
+            </Badge>
+          </div>
+        </div>
+        <p className="mb-2.5 text-xs leading-5 text-[var(--color-text-secondary)]">
+          {entry.description}
+        </p>
+        {type === 'process' && <ProgressBar config={config} />}
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+            {showDueDate && (
+              <span className={`font-mono text-[11px] font-medium ${getDueClass(dueState)}`}>
+                {getDueText(dueDate)}
+              </span>
+            )}
+            <span className="text-[10px] text-[var(--color-text-secondary)]">
+              {capitalize(formatRelativeUpdated(entry.updatedAt))} aktualisiert
+            </span>
+          </div>
+          <div className={`inline-flex w-fit items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-medium ${getOwnerClass(owner.key)}`}>
+            <div className="h-1.5 w-1.5 rounded-full bg-current" />
+            {owner.label}
           </div>
         </div>
       </div>
@@ -309,6 +319,11 @@ function entryMatchesFilter(entry, activeFilter) {
   return normalizeStatus(entry.status) === activeFilter || getOwner(entry).key === activeFilter
 }
 
+function getFilterCount(entries, filterKey) {
+  if (filterKey === 'alle') return entries.length
+  return entries.filter((entry) => entryMatchesFilter(entry, filterKey)).length
+}
+
 function normalizeKnownStatus(status) {
   if (status === 'Erledigt') return 'Erledigt'
   if (status === 'Neu') return 'Neu'
@@ -346,6 +361,21 @@ function getPriority(entry) {
   return 'Mittlere Priorität'
 }
 
+function getStripeColor(status, priority, type) {
+  if (status === 'Erledigt') return '#1D9E75'
+  if (type === 'info') return '#378ADD'
+  if (priority === 'Hohe Priorität') return '#dc2626'
+  if (priority === 'Mittlere Priorität') return '#ea580c'
+  return statusConfig[status].border
+}
+
+function getOwnerClass(ownerKey) {
+  if (ownerKey === 'techbuddy') {
+    return 'border-[#bfdbfe] bg-[#eff6ff] text-[#1e40af]'
+  }
+  return 'border-[#bbf7d0] bg-[#f0fdf4] text-[#166534]'
+}
+
 function getDueDate(entry) {
   const explicitDate = Date.parse(`${entry.dueDate}T00:00:00`)
   if (Number.isFinite(explicitDate)) return new Date(explicitDate)
@@ -367,6 +397,40 @@ function getDaysUntil(date) {
 
 function toDateInputValue(date) {
   return date.toISOString().slice(0, 10)
+}
+
+function getDueState(date) {
+  const daysUntil = getDaysUntil(date)
+  if (daysUntil < 0) return 'overdue'
+  if (daysUntil === 0) return 'today'
+  if (daysUntil <= 5) return 'soon'
+  return 'future'
+}
+
+function getDueClass(state) {
+  const styles = {
+    overdue: 'text-[#dc2626]',
+    today: 'text-[#ea580c]',
+    soon: 'text-[var(--color-text-secondary)]',
+    future: 'text-[var(--color-text-secondary)]',
+  }
+  return styles[state] || styles.future
+}
+
+function getDueText(date) {
+  const daysUntil = getDaysUntil(date)
+  if (daysUntil < 0) return 'Überfällig'
+  if (daysUntil === 0) return 'Heute'
+  if (daysUntil === 1) return 'Morgen'
+  if (daysUntil <= 30) return `in ${daysUntil} Tagen`
+  return formatDate(toDateInputValue(date))
+}
+
+function formatCurrentTime() {
+  return new Intl.DateTimeFormat('de-DE', {
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(new Date())
 }
 
 function formatRelativeDate(date) {
