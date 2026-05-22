@@ -34,7 +34,7 @@ const statusConfig = {
 }
 
 const categoryIcons = {
-  'Auszahlungen & Vergütung': 'ti-file-invoice',
+  'Auszahlungen & Vergütung': 'ti-cash',
   'Marketing & Sichtbarkeit': 'ti-speakerphone',
   'Termine & Koordination': 'ti-calendar-check',
   'Weitere Themen': 'ti-inbox',
@@ -234,6 +234,14 @@ function Badge({ background, color, children }) {
 
 function StatusIcon({ icon }) {
   const paths = {
+    'ti-cash': (
+      <>
+        <path d="M7 9h10a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-6a2 2 0 0 1 2-2z" />
+        <path d="M9 9V7a2 2 0 0 1 2-2h6" />
+        <path d="M14 14a2 2 0 1 1-4 0 2 2 0 0 1 4 0z" />
+        <path d="M17 13v2" />
+      </>
+    ),
     'ti-file-invoice': (
       <>
         <path d="M14 3v4a1 1 0 0 0 1 1h4" />
