@@ -28,14 +28,10 @@ test('shows status entries loaded from the API', async () => {
 
   expect(
     await screen.findByRole('heading', {
-      name: 'Kampagnenmaterial: Rückmeldung ausstehend',
+      name: 'Kampagne freigeben',
     }),
   ).toBeInTheDocument()
-  expect(
-    screen.getByText(
-      'Techbuddy prüft das Kampagnenmaterial und aktualisiert den Status nach Eingang der Rückmeldung.',
-    ),
-  ).toBeInTheDocument()
+  expect(screen.getByText('Bitte final prüfen.')).toBeInTheDocument()
   expect(screen.getByText('Hohe Priorität')).toBeInTheDocument()
   expect(screen.getAllByText('Offen').length).toBeGreaterThan(0)
   expect(screen.getByText('Heute aktualisiert')).toBeInTheDocument()
@@ -49,15 +45,13 @@ test('keeps the fallback status view visible and shows an error when loading fai
 
   render(<StatusApp />)
 
-  expect(
-    screen.getByRole('heading', { name: 'Statusmeldungen für Experten' }),
-  ).toBeInTheDocument()
+  expect(screen.getByText('Statusmeldungen')).toBeInTheDocument()
   expect(
     await screen.findByText('Statusdaten konnten nicht geladen werden.'),
   ).toBeInTheDocument()
   expect(
     screen.getByRole('heading', {
-      name: 'Zahlungsunterlagen: Rückmeldung ausstehend',
+      name: 'Rückmeldung Zahlungsunterlagen',
     }),
   ).toBeInTheDocument()
 })

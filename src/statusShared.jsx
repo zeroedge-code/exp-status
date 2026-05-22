@@ -36,49 +36,6 @@ const statusConfig = {
   },
 }
 
-const categoryTopics = {
-  'Auszahlungen & Vergütung': 'Zahlungsunterlagen',
-  'Marketing & Sichtbarkeit': 'Kampagnenmaterial',
-  'Termine & Koordination': 'Expertenrunde',
-  'Weitere Themen': 'Weitere Themen',
-}
-
-const statusStatements = {
-  Offen: 'Rückmeldung ausstehend',
-  Neu: 'Freigabe in Vorbereitung',
-  Erledigt: 'Termine bestätigt',
-}
-
-const categoryStatusStatements = {
-  'Auszahlungen & Vergütung': {
-    Offen: 'Rückmeldung ausstehend',
-    Neu: 'Prüfung vorbereitet',
-    Erledigt: 'Unterlagen abgeschlossen',
-  },
-  'Marketing & Sichtbarkeit': {
-    Offen: 'Rückmeldung ausstehend',
-    Neu: 'Freigabe in Vorbereitung',
-    Erledigt: 'Material freigegeben',
-  },
-  'Termine & Koordination': {
-    Offen: 'Rückmeldung ausstehend',
-    Neu: 'Abstimmung gestartet',
-    Erledigt: 'Termine bestätigt',
-  },
-  'Weitere Themen': {
-    Offen: 'Rückmeldung ausstehend',
-    Neu: 'Klärung gestartet',
-    Erledigt: 'Thema abgeschlossen',
-  },
-}
-
-const descriptionObjects = {
-  'Auszahlungen & Vergütung': 'die Zahlungsunterlagen',
-  'Marketing & Sichtbarkeit': 'das Kampagnenmaterial',
-  'Termine & Koordination': 'die Expertenrunde',
-  'Weitere Themen': 'das Thema',
-}
-
 export function StatusPage({
   statusEntries,
   intro = 'Alle aktuellen Themen, Aufgaben und Infos auf einen Blick.',
@@ -104,16 +61,13 @@ export function StatusPage({
           <div className="bg-[#378ADD]" />
           <div className="bg-[#1D9E75]" />
         </div>
-        <div className="flex flex-col gap-6 p-5 sm:p-6 lg:flex-row lg:items-end lg:justify-between">
-          <div className="max-w-2xl">
-            <div className="mb-3 inline-flex items-center gap-2 rounded-[var(--border-radius-md)] border-[0.5px] border-[var(--color-border-tertiary)] bg-[var(--color-background-secondary)] px-2.5 py-1 text-xs font-medium uppercase tracking-[0.05em] text-[var(--color-text-secondary)]">
+        <div className="flex flex-col gap-6 p-5 sm:p-6 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex max-w-2xl flex-col gap-3">
+            <div className="inline-flex w-fit items-center gap-2 rounded-[var(--border-radius-md)] border-[0.5px] border-[var(--color-border-tertiary)] bg-[var(--color-background-secondary)] px-2.5 py-1 text-xs font-medium uppercase tracking-[0.05em] text-[var(--color-text-secondary)]">
               <span className="h-1.5 w-1.5 rounded-full bg-[#1D9E75]" />
-              Expertenstatus
+              Statusmeldungen
             </div>
-            <h1 className="text-3xl font-semibold leading-tight text-[var(--color-text-primary)] sm:text-4xl">
-              Statusmeldungen für Experten
-            </h1>
-            <p className="mt-3 inline-flex rounded-[var(--border-radius-md)] bg-[var(--color-background-secondary)] px-3 py-1.5 text-sm text-[var(--color-text-tertiary)]">
+            <p className="text-sm text-[var(--color-text-tertiary)]">
               {latestUpdate ? `Aktualisiert ${formatRelativeDate(latestUpdate)}` : intro}
             </p>
           </div>
@@ -161,7 +115,7 @@ export function StatusPage({
       <div className="mt-8 space-y-8">
         {groupedEntries
           .filter(({ visibleEntries }) => visibleEntries.length > 0)
-          .map(({ category, entries, visibleEntries }) => (
+          .map(({ category, visibleEntries }) => (
             <section key={category}>
               <h2 className="mb-3 text-xs font-medium uppercase tracking-[0.05em] text-[var(--color-text-secondary)]">
                 {category}
@@ -213,10 +167,10 @@ function StatusCard({ entry }) {
             </div>
           </div>
           <h3 className="mt-1 text-lg font-semibold leading-snug text-[var(--color-text-primary)]">
-            {getDisplayTitle(entry, status)}
+            {entry.title}
           </h3>
           <p className="mt-3 text-sm leading-6 text-[var(--color-text-secondary)]">
-            {getDescription(entry, status, owner.label)}
+            {entry.description}
           </p>
           <ProgressBar config={config} />
           <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -360,23 +314,6 @@ function getPriority(entry) {
   }
   if (entry.status === 'Dringend' || getDaysUntil(getDueDate(entry)) < 5) return 'Hohe Priorität'
   return 'Mittlere Priorität'
-}
-
-function getDisplayTitle(entry, status) {
-  const topic = categoryTopics[entry.category] || entry.title || 'Statusmeldung'
-  const statement = categoryStatusStatements[entry.category]?.[status] || statusStatements[status]
-  return `${topic}: ${statement}`
-}
-
-function getDescription(entry, status, owner) {
-  const topic = descriptionObjects[entry.category] || entry.title || 'das Thema'
-  if (status === 'Erledigt') {
-    return `${owner} hat ${topic} abgeschlossen; kein Handlungsbedarf Ihrerseits.`
-  }
-  if (status === 'Neu') {
-    return `${owner} bereitet ${topic} vor und aktualisiert den Status nach der internen Freigabe.`
-  }
-  return `${owner} prüft ${topic} und aktualisiert den Status nach Eingang der Rückmeldung.`
 }
 
 function getDueDate(entry) {
