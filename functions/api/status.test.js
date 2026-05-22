@@ -1,5 +1,4 @@
-import test from 'node:test'
-import assert from 'node:assert/strict'
+import { expect, test } from 'vitest'
 import { onRequestGet, onRequestPut } from './status.js'
 
 function createStore(initialValue) {
@@ -61,10 +60,18 @@ test('GET returns default data and seeds KV when empty', async () => {
   const response = await onRequestGet({ env: { STATUS_STORE: store } })
   const body = await response.json()
 
-  assert.equal(response.status, 200)
-  assert.equal(body.statusEntries.length, 3)
-  assert.equal(body.tasks.length, 0)
-  assert.ok(store.values.has('status-data'))
+  expect(response.status).toBe(200)
+  expect(body.statusEntries).toHaveLength(3)
+  expect(body.tasks).toHaveLength(0)
+  expect(store.values.has('status-data')).toBe(true)
+})
+
+test('GET rejects missing KV binding', async () => {
+  const response = await onRequestGet({ env: {} })
+  const body = await response.json()
+
+  expect(response.status).toBe(500)
+  expect(body.error).toBe('Missing STATUS_STORE KV binding.')
 })
 
 test('PUT rejects writes outside admin target', async () => {
@@ -74,8 +81,8 @@ test('PUT rejects writes outside admin target', async () => {
   })
   const body = await response.json()
 
-  assert.equal(response.status, 403)
-  assert.equal(body.error, 'Writes are only allowed from the admin app.')
+  expect(response.status).toBe(403)
+  expect(body.error).toBe('Writes are only allowed from the admin app.')
 })
 
 test('PUT rejects malformed JSON', async () => {
@@ -89,8 +96,8 @@ test('PUT rejects malformed JSON', async () => {
   })
   const body = await response.json()
 
-  assert.equal(response.status, 400)
-  assert.equal(body.error, 'Request body must be valid JSON.')
+  expect(response.status).toBe(400)
+  expect(body.error).toBe('Request body must be valid JSON.')
 })
 
 test('PUT rejects invalid status and task data', async () => {
@@ -105,9 +112,9 @@ test('PUT rejects invalid status and task data', async () => {
   })
   const body = await response.json()
 
-  assert.equal(response.status, 400)
-  assert.equal(body.error, 'Invalid status data.')
-  assert.deepEqual(body.details, [
+  expect(response.status).toBe(400)
+  expect(body.error).toBe('Invalid status data.')
+  expect(body.details).toEqual([
     'statusEntries[0] is invalid.',
     'tasks[0] is invalid.',
   ])
@@ -122,12 +129,12 @@ test('PUT stores normalized valid data', async () => {
   const body = await response.json()
   const stored = JSON.parse(store.values.get('status-data'))
 
-  assert.equal(response.status, 200)
-  assert.equal(body.statusEntries[0].category, 'Auszahlungen & Vergütung')
-  assert.equal(body.statusEntries[0].status, 'Offen')
-  assert.equal(body.statusEntries[0].createdAt, '2026-05-20')
-  assert.equal(stored.statusEntries[0].category, 'Auszahlungen & Vergütung')
-  assert.deepEqual(Object.keys(stored.statusEntries[0]).sort(), [
+  expect(response.status).toBe(200)
+  expect(body.statusEntries[0].category).toBe('Auszahlungen & Vergütung')
+  expect(body.statusEntries[0].status).toBe('Offen')
+  expect(body.statusEntries[0].createdAt).toBe('2026-05-20')
+  expect(stored.statusEntries[0].category).toBe('Auszahlungen & Vergütung')
+  expect(Object.keys(stored.statusEntries[0]).sort()).toEqual([
     'category',
     'createdAt',
     'description',
@@ -136,7 +143,7 @@ test('PUT stores normalized valid data', async () => {
     'title',
     'updatedAt',
   ])
-  assert.deepEqual(Object.keys(stored.tasks[0]).sort(), [
+  expect(Object.keys(stored.tasks[0]).sort()).toEqual([
     'completed',
     'dueDate',
     'id',
@@ -158,8 +165,8 @@ test('PUT accepts legacy status entries without createdAt', async () => {
   })
   const body = await response.json()
 
-  assert.equal(response.status, 200)
-  assert.equal(body.statusEntries[0].createdAt, '2026-05-21')
+  expect(response.status).toBe(200)
+  expect(body.statusEntries[0].createdAt).toBe('2026-05-21')
 })
 
 test('PUT preserves urgent status', async () => {
@@ -172,6 +179,6 @@ test('PUT preserves urgent status', async () => {
   })
   const body = await response.json()
 
-  assert.equal(response.status, 200)
-  assert.equal(body.statusEntries[0].status, 'Dringend')
+  expect(response.status).toBe(200)
+  expect(body.statusEntries[0].status).toBe('Dringend')
 })

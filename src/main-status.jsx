@@ -1,4 +1,3 @@
-/* eslint-disable react-refresh/only-export-components */
 import { StrictMode, useEffect, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
@@ -15,8 +14,9 @@ async function fetchStatusEntries() {
   return normalizeStatusEntries(await response.json(), initialStatusEntries)
 }
 
-function StatusApp() {
+export function StatusApp() {
   const [statusEntries, setStatusEntries] = useState(initialStatusEntries)
+  const [loadError, setLoadError] = useState('')
 
   useEffect(() => {
     let active = true
@@ -24,9 +24,11 @@ function StatusApp() {
       .then((entries) => {
         if (!active) return
         setStatusEntries(entries)
+        setLoadError('')
       })
-      .catch(() => {
-        return
+      .catch((error) => {
+        if (!active) return
+        setLoadError(error.message)
       })
     return () => {
       active = false
@@ -35,13 +37,22 @@ function StatusApp() {
 
   return (
     <div className="min-h-screen">
+      {loadError && (
+        <div className="border-b border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-900">
+          <div className="mx-auto max-w-7xl">{loadError}</div>
+        </div>
+      )}
       <StatusPage statusEntries={statusEntries} />
     </div>
   )
 }
 
-createRoot(document.getElementById('root')).render(
-  <StrictMode>
-    <StatusApp />
-  </StrictMode>,
-)
+const rootElement = document.getElementById('root')
+
+if (rootElement) {
+  createRoot(rootElement).render(
+    <StrictMode>
+      <StatusApp />
+    </StrictMode>,
+  )
+}

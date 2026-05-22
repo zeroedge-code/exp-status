@@ -1,0 +1,54 @@
+import { render, screen } from '@testing-library/react'
+import { afterEach, expect, test, vi } from 'vitest'
+import { StatusApp } from './main-status.jsx'
+
+afterEach(() => {
+  vi.restoreAllMocks()
+})
+
+test('shows status entries loaded from the API', async () => {
+  vi.spyOn(globalThis, 'fetch').mockResolvedValue({
+    ok: true,
+    json: async () => ({
+      statusEntries: [
+        {
+          id: 'api-entry',
+          category: 'Marketing',
+          title: 'Kampagne freigeben',
+          status: 'Dringend',
+          createdAt: '2026-05-21',
+          updatedAt: '2026-05-22',
+          description: 'Bitte final prüfen.',
+        },
+      ],
+    }),
+  })
+
+  render(<StatusApp />)
+
+  expect(
+    await screen.findByRole('heading', { name: 'Kampagne freigeben' }),
+  ).toBeInTheDocument()
+  expect(screen.getByText('Bitte final prüfen.')).toBeInTheDocument()
+  expect(screen.getByText('Dringend')).toBeInTheDocument()
+  expect(screen.getByText('22.05.2026')).toBeInTheDocument()
+})
+
+test('keeps the fallback status view visible and shows an error when loading fails', async () => {
+  vi.spyOn(globalThis, 'fetch').mockResolvedValue({
+    ok: false,
+    json: async () => ({}),
+  })
+
+  render(<StatusApp />)
+
+  expect(
+    screen.getByRole('heading', { name: 'Was gerade wichtig ist' }),
+  ).toBeInTheDocument()
+  expect(
+    await screen.findByText('Statusdaten konnten nicht geladen werden.'),
+  ).toBeInTheDocument()
+  expect(
+    screen.getByRole('heading', { name: 'Rückmeldung Zahlungsunterlagen' }),
+  ).toBeInTheDocument()
+})

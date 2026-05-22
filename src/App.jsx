@@ -23,7 +23,8 @@ const initialData = {
 }
 
 const localDevStorageKey = 'expertenstatus-local-dev-data'
-const useLocalDevStore = import.meta.env.DEV && !import.meta.env.VITE_APP_TARGET
+const useLocalDevStore =
+  import.meta.env.DEV && import.meta.env.MODE !== 'test' && !import.meta.env.VITE_APP_TARGET
 
 function normalizeData(rawData) {
   return {
@@ -115,6 +116,7 @@ function App({ adminOnly = false }) {
   async function updateData(nextData) {
     const requestId = saveRequestId.current + 1
     saveRequestId.current = requestId
+    const previousData = data
     const normalizedData = normalizeData(nextData)
     setData(normalizedData)
     setSyncError('')
@@ -127,6 +129,7 @@ function App({ adminOnly = false }) {
       setSyncState('saved')
     } catch (error) {
       if (requestId !== saveRequestId.current) return
+      setData(previousData)
       setSyncError(error.message)
       setSyncState('error')
     }
@@ -242,7 +245,7 @@ function Dashboard({ data, updateData }) {
   return (
     <main>
       <section className="border-b border-slate-200 bg-white">
-        <div className="mx-auto flex max-w-7xl flex-col gap-4 px-4 py-6 lg:flex-row lg:items-end lg:justify-between">
+        <div className="mx-auto max-w-7xl px-4 py-6">
           <div className="max-w-3xl">
             <p className="mb-2 text-xs font-bold uppercase text-teal-700">
               Geschützter Bereich
@@ -254,7 +257,6 @@ function Dashboard({ data, updateData }) {
               Pflege die Themen, die im Experten-Dashboard sichtbar sind.
             </p>
           </div>
-          <BackupTools data={data} updateData={updateData} />
         </div>
       </section>
 
@@ -405,66 +407,6 @@ function EntryForm({ draft, setDraft, onSubmit, editing, onCancel }) {
       </Field>
       <FormActions editing={editing} onCancel={onCancel} />
     </form>
-  )
-}
-
-function BackupTools({ data, updateData }) {
-  const inputRef = useRef(null)
-
-  function exportData() {
-    const blob = new Blob([JSON.stringify(data, null, 2)], {
-      type: 'application/json',
-    })
-    const url = URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.href = url
-    link.download = `expertenstatus-backup-${new Date().toISOString().slice(0, 10)}.json`
-    link.click()
-    URL.revokeObjectURL(url)
-  }
-
-  function importData(event) {
-    const file = event.target.files?.[0]
-    if (!file) return
-    const reader = new FileReader()
-    reader.onload = () => {
-      try {
-        const parsed = JSON.parse(reader.result)
-        if (!Array.isArray(parsed.statusEntries) || !Array.isArray(parsed.tasks)) return
-        updateData(normalizeData(parsed))
-      } catch {
-        return
-      } finally {
-        event.target.value = ''
-      }
-    }
-    reader.readAsText(file)
-  }
-
-  return (
-    <div className="flex flex-wrap gap-2">
-      <button
-        type="button"
-        onClick={exportData}
-        className="rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-800 shadow-sm hover:bg-slate-50"
-      >
-        JSON Export
-      </button>
-      <button
-        type="button"
-        onClick={() => inputRef.current?.click()}
-        className="rounded-md bg-teal-900 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-teal-800"
-      >
-        JSON Import
-      </button>
-      <input
-        ref={inputRef}
-        type="file"
-        accept="application/json"
-        onChange={importData}
-        className="hidden"
-      />
-    </div>
   )
 }
 

@@ -198,7 +198,9 @@ async function readJson(request) {
 }
 
 async function readData(env) {
-  if (!env.STATUS_STORE) return defaultData
+  if (!env.STATUS_STORE) {
+    return { error: 'Missing STATUS_STORE KV binding.' }
+  }
 
   const stored = await env.STATUS_STORE.get(STORE_KEY, 'json')
   if (!stored) {
@@ -210,7 +212,12 @@ async function readData(env) {
 }
 
 export async function onRequestGet({ env }) {
-  return jsonResponse(await readData(env))
+  const data = await readData(env)
+  if (data.error) {
+    return jsonResponse({ error: data.error }, { status: 500 })
+  }
+
+  return jsonResponse(data)
 }
 
 export async function onRequestPut({ request, env }) {

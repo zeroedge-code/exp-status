@@ -1,5 +1,4 @@
-import test from 'node:test'
-import assert from 'node:assert/strict'
+import { expect, test } from 'vitest'
 import { formatDate, normalizeStatusEntries } from './statusData.js'
 
 test('normalizeStatusEntries migrates old category names', () => {
@@ -24,11 +23,11 @@ test('normalizeStatusEntries migrates old category names', () => {
     ],
   })
 
-  assert.equal(entries[0].category, 'Auszahlungen & Vergütung')
-  assert.equal(entries[1].category, 'Termine & Koordination')
-  assert.equal(entries[0].status, 'Offen')
-  assert.equal(entries[1].status, 'Erledigt')
-  assert.equal(entries[0].createdAt, '2026-05-20')
+  expect(entries[0].category).toBe('Auszahlungen & Vergütung')
+  expect(entries[1].category).toBe('Termine & Koordination')
+  expect(entries[0].status).toBe('Offen')
+  expect(entries[1].status).toBe('Erledigt')
+  expect(entries[0].createdAt).toBe('2026-05-20')
 })
 
 test('normalizeStatusEntries preserves urgent status', () => {
@@ -45,18 +44,18 @@ test('normalizeStatusEntries preserves urgent status', () => {
     ],
   })
 
-  assert.equal(entries[0].category, 'Marketing & Sichtbarkeit')
-  assert.equal(entries[0].status, 'Dringend')
+  expect(entries[0].category).toBe('Marketing & Sichtbarkeit')
+  expect(entries[0].status).toBe('Dringend')
 })
 
 test('normalizeStatusEntries returns provided fallback for malformed data', () => {
   const fallback = [{ id: 'fallback' }]
 
-  assert.equal(normalizeStatusEntries({}, fallback), fallback)
-  assert.equal(normalizeStatusEntries({ statusEntries: null }, fallback), fallback)
+  expect(normalizeStatusEntries({}, fallback)).toBe(fallback)
+  expect(normalizeStatusEntries({ statusEntries: null }, fallback)).toBe(fallback)
 })
 
 test('formatDate formats German dates and handles empty values', () => {
-  assert.equal(formatDate('2026-05-21'), '21.05.2026')
-  assert.equal(formatDate(''), 'Kein Datum')
+  expect(formatDate('2026-05-21')).toBe('21.05.2026')
+  expect(formatDate('')).toBe('Kein Datum')
 })
