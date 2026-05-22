@@ -163,14 +163,9 @@ export function StatusPage({
           .filter(({ visibleEntries }) => visibleEntries.length > 0)
           .map(({ category, entries, visibleEntries }) => (
             <section key={category}>
-              <div className="mb-3 flex items-center justify-between">
-                <h2 className="text-xs font-medium uppercase tracking-[0.05em] text-[var(--color-text-secondary)]">
-                  {category}
-                </h2>
-                <span className="text-xs text-[var(--color-text-tertiary)]">
-                  {visibleEntries.length} von {entries.length}
-                </span>
-              </div>
+              <h2 className="mb-3 text-xs font-medium uppercase tracking-[0.05em] text-[var(--color-text-secondary)]">
+                {category}
+              </h2>
               <div className="grid gap-4 lg:grid-cols-2">
                 {visibleEntries.map((entry) => (
                   <StatusCard key={entry.id} entry={entry} />
