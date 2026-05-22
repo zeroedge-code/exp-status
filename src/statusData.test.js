@@ -28,6 +28,9 @@ test('normalizeStatusEntries migrates old category names', () => {
   expect(entries[0].status).toBe('Offen')
   expect(entries[1].status).toBe('Erledigt')
   expect(entries[0].createdAt).toBe('2026-05-20')
+  expect(entries[0].owner).toBe('Operator')
+  expect(entries[0].priority).toBe('Mittlere Priorität')
+  expect(entries[0].dueDate).toBe('2026-05-27')
 })
 
 test('normalizeStatusEntries preserves urgent status', () => {

@@ -27,11 +27,18 @@ test('shows status entries loaded from the API', async () => {
   render(<StatusApp />)
 
   expect(
-    await screen.findByRole('heading', { name: 'Kampagne freigeben' }),
+    await screen.findByRole('heading', {
+      name: 'Kampagnenmaterial: Rückmeldung ausstehend',
+    }),
   ).toBeInTheDocument()
-  expect(screen.getByText('Bitte final prüfen.')).toBeInTheDocument()
-  expect(screen.getByText('Dringend')).toBeInTheDocument()
-  expect(screen.getByText('22.05.2026')).toBeInTheDocument()
+  expect(
+    screen.getByText(
+      'Techbuddy prüft das Kampagnenmaterial und aktualisiert den Status nach Eingang der Rückmeldung.',
+    ),
+  ).toBeInTheDocument()
+  expect(screen.getByText('Hohe Priorität')).toBeInTheDocument()
+  expect(screen.getAllByText('Offen').length).toBeGreaterThan(0)
+  expect(screen.getByText('Heute aktualisiert')).toBeInTheDocument()
 })
 
 test('keeps the fallback status view visible and shows an error when loading fails', async () => {
@@ -43,12 +50,14 @@ test('keeps the fallback status view visible and shows an error when loading fai
   render(<StatusApp />)
 
   expect(
-    screen.getByRole('heading', { name: 'Was gerade wichtig ist' }),
+    screen.getByRole('heading', { name: 'Statusmeldungen für Experten' }),
   ).toBeInTheDocument()
   expect(
     await screen.findByText('Statusdaten konnten nicht geladen werden.'),
   ).toBeInTheDocument()
   expect(
-    screen.getByRole('heading', { name: 'Rückmeldung Zahlungsunterlagen' }),
+    screen.getByRole('heading', {
+      name: 'Zahlungsunterlagen: Rückmeldung ausstehend',
+    }),
   ).toBeInTheDocument()
 })

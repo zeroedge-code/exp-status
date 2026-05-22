@@ -79,6 +79,8 @@ test('creates a status entry from the intern dashboard form', async () => {
   await user.type(screen.getByLabelText('Titel'), 'Neue Experteninfo')
   await user.clear(screen.getByLabelText('Datum letzter Stand'))
   await user.type(screen.getByLabelText('Datum letzter Stand'), '2026-05-22')
+  await user.clear(screen.getByLabelText('Fälligkeitsdatum'))
+  await user.type(screen.getByLabelText('Fälligkeitsdatum'), '2026-05-24')
   await user.type(screen.getByLabelText('Beschreibung'), 'Bitte heute freigeben.')
   await user.click(screen.getByRole('button', { name: 'Anlegen' }))
 
@@ -86,7 +88,7 @@ test('creates a status entry from the intern dashboard form', async () => {
     screen.getByRole('heading', { name: 'Neue Experteninfo' }),
   ).toBeInTheDocument()
   expect(
-    screen.getByText('Marketing & Sichtbarkeit · Dringend · 22.05.2026'),
+    screen.getByText('Marketing & Sichtbarkeit · Dringend · Operator · fällig 24.05.2026'),
   ).toBeInTheDocument()
 })
 
@@ -113,7 +115,7 @@ test('edits an existing status entry from its dashboard row', async () => {
   ).toBeInTheDocument()
   expect(screen.queryByRole('heading', { name: 'API Zahlungsunterlagen' })).not.toBeInTheDocument()
   expect(
-    screen.getByText('Auszahlungen & Vergütung · Erledigt · 18.05.2026'),
+    screen.getByText('Auszahlungen & Vergütung · Erledigt · Operator · fällig 25.05.2026'),
   ).toBeInTheDocument()
 })
 

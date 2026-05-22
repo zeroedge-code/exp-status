@@ -1,107 +1,436 @@
+import { useState } from 'react'
 import { categories, formatDate } from './statusData.js'
+
+const filterOptions = ['Alle', 'Offen', 'Neu', 'Erledigt', 'Operator', 'Techbuddy']
+
+const statusConfig = {
+  Offen: {
+    key: 'offen',
+    border: '#EF9F27',
+    color: '#854F0B',
+    iconBg: '#FAEEDA',
+    badgeBg: '#FAEEDA',
+    progress: 33,
+    step: 'Schritt 1 von 3: Rückmeldung',
+    icon: 'ti-file-invoice',
+  },
+  Neu: {
+    key: 'neu',
+    border: '#378ADD',
+    color: '#185FA5',
+    iconBg: '#E6F1FB',
+    badgeBg: '#E6F1FB',
+    progress: 66,
+    step: 'Schritt 2 von 3: Vorbereitung',
+    icon: 'ti-speakerphone',
+  },
+  Erledigt: {
+    key: 'erledigt',
+    border: '#1D9E75',
+    color: '#0F6E56',
+    iconBg: '#E1F5EE',
+    badgeBg: '#E1F5EE',
+    progress: 100,
+    step: 'Schritt 3 von 3: Abgeschlossen',
+    icon: 'ti-calendar-check',
+  },
+}
+
+const categoryTopics = {
+  'Auszahlungen & Vergütung': 'Zahlungsunterlagen',
+  'Marketing & Sichtbarkeit': 'Kampagnenmaterial',
+  'Termine & Koordination': 'Expertenrunde',
+  'Weitere Themen': 'Weitere Themen',
+}
+
+const statusStatements = {
+  Offen: 'Rückmeldung ausstehend',
+  Neu: 'Freigabe in Vorbereitung',
+  Erledigt: 'Termine bestätigt',
+}
+
+const categoryStatusStatements = {
+  'Auszahlungen & Vergütung': {
+    Offen: 'Rückmeldung ausstehend',
+    Neu: 'Prüfung vorbereitet',
+    Erledigt: 'Unterlagen abgeschlossen',
+  },
+  'Marketing & Sichtbarkeit': {
+    Offen: 'Rückmeldung ausstehend',
+    Neu: 'Freigabe in Vorbereitung',
+    Erledigt: 'Material freigegeben',
+  },
+  'Termine & Koordination': {
+    Offen: 'Rückmeldung ausstehend',
+    Neu: 'Abstimmung gestartet',
+    Erledigt: 'Termine bestätigt',
+  },
+  'Weitere Themen': {
+    Offen: 'Rückmeldung ausstehend',
+    Neu: 'Klärung gestartet',
+    Erledigt: 'Thema abgeschlossen',
+  },
+}
+
+const descriptionObjects = {
+  'Auszahlungen & Vergütung': 'die Zahlungsunterlagen',
+  'Marketing & Sichtbarkeit': 'das Kampagnenmaterial',
+  'Termine & Koordination': 'die Expertenrunde',
+  'Weitere Themen': 'das Thema',
+}
 
 export function StatusPage({
   statusEntries,
   intro = 'Alle aktuellen Themen, Aufgaben und Infos auf einen Blick.',
 }) {
-  const groupedEntries = categories.map((category) => ({
-    category,
-    entries: statusEntries.filter((entry) => entry.category === category),
+  const [activeFilter, setActiveFilter] = useState('alle')
+  const latestUpdate = getLatestUpdate(statusEntries)
+  const stats = ['Offen', 'Neu', 'Erledigt'].map((status) => ({
+    status,
+    count: statusEntries.filter((entry) => normalizeStatus(entry.status) === normalizeStatus(status)).length,
   }))
+
+  const groupedEntries = categories.map((category) => {
+    const entries = statusEntries.filter((entry) => entry.category === category)
+    const visibleEntries = entries.filter((entry) => entryMatchesFilter(entry, activeFilter))
+    return { category, entries, visibleEntries }
+  })
 
   return (
     <main className="mx-auto max-w-7xl px-4 py-8">
-      <section className="mb-8 rounded-xl border border-white bg-white/70 p-6 shadow-sm">
-        <div>
-          <p className="mb-2 text-xs font-bold uppercase text-teal-700">
-            Für alle Experten
-          </p>
-          <h2 className="text-3xl font-semibold text-slate-950">
-            Was gerade wichtig ist
-          </h2>
-          <p className="mt-3 max-w-3xl text-slate-600">{intro}</p>
+      <section className="overflow-hidden rounded-[var(--border-radius-lg)] border border-[var(--color-border-tertiary)] bg-[var(--color-background-primary)] shadow-sm">
+        <div className="grid h-1 grid-cols-3">
+          <div className="bg-[#EF9F27]" />
+          <div className="bg-[#378ADD]" />
+          <div className="bg-[#1D9E75]" />
+        </div>
+        <div className="flex flex-col gap-6 p-5 sm:p-6 lg:flex-row lg:items-end lg:justify-between">
+          <div className="max-w-2xl">
+            <div className="mb-3 inline-flex items-center gap-2 rounded-[var(--border-radius-md)] border-[0.5px] border-[var(--color-border-tertiary)] bg-[var(--color-background-secondary)] px-2.5 py-1 text-xs font-medium uppercase tracking-[0.05em] text-[var(--color-text-secondary)]">
+              <span className="h-1.5 w-1.5 rounded-full bg-[#1D9E75]" />
+              Expertenstatus
+            </div>
+            <h1 className="text-3xl font-semibold leading-tight text-[var(--color-text-primary)] sm:text-4xl">
+              Statusmeldungen für Experten
+            </h1>
+            <p className="mt-3 inline-flex rounded-[var(--border-radius-md)] bg-[var(--color-background-secondary)] px-3 py-1.5 text-sm text-[var(--color-text-tertiary)]">
+              {latestUpdate ? `Aktualisiert ${formatRelativeDate(latestUpdate)}` : intro}
+            </p>
+          </div>
+          <div className="grid grid-cols-3 gap-2 sm:min-w-96">
+            {stats.map(({ status, count }) => (
+              <button
+                key={status}
+                type="button"
+                onClick={() => setActiveFilter(statusConfig[status].key)}
+                className="rounded-[var(--border-radius-md)] border-[0.5px] border-[var(--color-border-tertiary)] bg-[var(--color-background-secondary)] px-3 py-3 text-left transition hover:border-[var(--color-border-secondary)]"
+              >
+                <span className="block text-2xl font-semibold leading-none" style={{ color: statusConfig[status].color }}>
+                  {count}
+                </span>
+                <span className="mt-1 block text-xs font-medium text-[var(--color-text-secondary)]">
+                  {status}
+                </span>
+              </button>
+            ))}
+          </div>
         </div>
       </section>
 
-      <div className="space-y-8">
-        {groupedEntries.map(({ category, entries }) => (
-          <section key={category}>
-            <div className="mb-3 flex items-center justify-between">
-              <h3 className="text-lg font-semibold text-slate-950">{category}</h3>
-              <span className="text-sm text-slate-500">
-                {entries.length === 0 ? 'Keine Einträge' : `${entries.length} Einträge`}
-              </span>
-            </div>
-            {entries.length === 0 ? (
-              <EmptyState text="Aktuell nichts Neues – schau später wieder vorbei." />
-            ) : (
+      <div className="mt-5 flex flex-wrap gap-2">
+        {filterOptions.map((filter) => {
+          const filterKey = filter.toLowerCase()
+          const isActive = activeFilter === filterKey
+          return (
+            <button
+              key={filter}
+              type="button"
+              onClick={() => setActiveFilter(filterKey)}
+              className={`rounded-[var(--border-radius-md)] px-3 py-1.5 text-sm transition ${
+                isActive
+                  ? 'border border-[var(--color-border-primary)] bg-[var(--color-background-secondary)] font-medium text-[var(--color-text-primary)]'
+                  : 'border-[0.5px] border-[var(--color-border-tertiary)] bg-[var(--color-background-primary)] text-[var(--color-text-secondary)] hover:border-[var(--color-border-secondary)]'
+              }`}
+            >
+              {filter}
+            </button>
+          )
+        })}
+      </div>
+
+      <div className="mt-8 space-y-8">
+        {groupedEntries
+          .filter(({ visibleEntries }) => visibleEntries.length > 0)
+          .map(({ category, entries, visibleEntries }) => (
+            <section key={category}>
+              <div className="mb-3 flex items-center justify-between">
+                <h2 className="text-xs font-medium uppercase tracking-[0.05em] text-[var(--color-text-secondary)]">
+                  {category}
+                </h2>
+                <span className="text-xs text-[var(--color-text-tertiary)]">
+                  {visibleEntries.length} von {entries.length}
+                </span>
+              </div>
               <div className="grid gap-4 lg:grid-cols-2">
-                {entries.map((entry) => (
+                {visibleEntries.map((entry) => (
                   <StatusCard key={entry.id} entry={entry} />
                 ))}
               </div>
-            )}
-          </section>
-        ))}
+            </section>
+          ))}
       </div>
     </main>
   )
 }
 
 function StatusCard({ entry }) {
-  const borderStyles = {
-    Neu: 'border-l-sky-500',
-    Offen: 'border-l-amber-500',
-    Erledigt: 'border-l-emerald-500',
-    'Antwort ausstehend': 'border-l-sky-500',
-    'In Bearbeitung': 'border-l-indigo-500',
-    Abgeschlossen: 'border-l-emerald-500',
-    Dringend: 'border-l-rose-500',
-  }
+  const status = normalizeKnownStatus(entry.status)
+  const config = statusConfig[status]
+  const owner = getOwner(entry)
+  const priority = getPriority(entry)
+  const dueDate = getDueDate(entry)
+  const dueSoon = getDaysUntil(dueDate) < 5
 
   return (
     <article
-      className={`rounded-lg border border-l-4 border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md ${borderStyles[entry.status] || 'border-l-slate-300'}`}
+      className="card rounded-r-[var(--border-radius-lg)] border-[0.5px] border-l-[3px] border-[var(--color-border-tertiary)] bg-[var(--color-background-primary)] p-4 shadow-sm transition hover:border-[var(--color-border-secondary)]"
+      data-status={config.key}
+      data-owner={owner.key}
+      style={{ borderLeftColor: config.border, borderTopLeftRadius: 0, borderBottomLeftRadius: 0 }}
     >
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <p className="text-sm font-semibold text-teal-700">{entry.category}</p>
-          <h4 className="mt-1 text-xl font-semibold text-slate-950">{entry.title}</h4>
+      <div className="grid grid-cols-[36px_1fr] gap-3">
+        <div
+          className="flex h-9 w-9 items-center justify-center rounded-[var(--border-radius-md)]"
+          style={{ background: config.iconBg, color: config.color }}
+        >
+          <StatusIcon icon={config.icon} />
         </div>
-        <StatusBadge status={entry.status} />
+        <div className="min-w-0">
+          <div className="flex items-start justify-between gap-3">
+            <p className="text-xs font-medium text-[var(--color-text-secondary)]">
+              {entry.category}
+            </p>
+            <div className="flex shrink-0 flex-wrap justify-end gap-1.5">
+              {priority && <PriorityBadge priority={priority} />}
+              <Badge background={config.badgeBg} color={config.color}>
+                {status}
+              </Badge>
+            </div>
+          </div>
+          <h3 className="mt-1 text-lg font-semibold leading-snug text-[var(--color-text-primary)]">
+            {getDisplayTitle(entry, status)}
+          </h3>
+          <p className="mt-3 text-sm leading-6 text-[var(--color-text-secondary)]">
+            {getDescription(entry, status, owner.label)}
+          </p>
+          <ProgressBar config={config} />
+          <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-[var(--color-text-tertiary)]">
+              <span className={dueSoon ? 'font-medium text-[#A32D2D]' : ''}>
+                Fällig {formatDate(toDateInputValue(dueDate))}
+              </span>
+              <span>{capitalize(formatRelativeUpdated(entry.updatedAt))} aktualisiert</span>
+            </div>
+            <div className="owner inline-flex w-fit items-center gap-2 rounded-[var(--border-radius-md)] border-[0.5px] border-[var(--color-border-tertiary)] bg-[var(--color-background-secondary)] px-2.5 py-1 text-xs font-medium text-[var(--color-text-secondary)]">
+              <div className="owner-dot h-2 w-2 rounded-full" style={{ background: config.border }} />
+              {owner.label}
+            </div>
+          </div>
+        </div>
       </div>
-      <p className="mt-4 text-sm leading-6 text-slate-600">{entry.description}</p>
-      <p className="mt-5 inline-flex rounded-md bg-slate-100 px-3 py-1 text-sm text-slate-600">
-        Letzter Stand:<span className="ml-1 font-medium">{formatDate(entry.updatedAt)}</span>
-      </p>
     </article>
   )
 }
 
-function StatusBadge({ status }) {
-  const styles = {
-    Neu: 'bg-sky-100 text-sky-900 ring-sky-200',
-    Offen: 'bg-amber-100 text-amber-900 ring-amber-200',
-    Erledigt: 'bg-emerald-100 text-emerald-900 ring-emerald-200',
-    'Antwort ausstehend': 'bg-sky-100 text-sky-900 ring-sky-200',
-    'In Bearbeitung': 'bg-indigo-100 text-indigo-900 ring-indigo-200',
-    Abgeschlossen: 'bg-emerald-100 text-emerald-900 ring-emerald-200',
-    Dringend: 'bg-rose-100 text-rose-900 ring-rose-200',
-  }
+function ProgressBar({ config }) {
+  return (
+    <div className="mt-4">
+      <div className="mb-2 flex items-center justify-between gap-3 text-xs text-[var(--color-text-tertiary)]">
+        <span>Fortschritt</span>
+        <span className="text-right">{config.step}</span>
+      </div>
+      <div className="h-1 rounded-sm bg-[var(--color-background-secondary)]">
+        <div
+          className="h-1 rounded-sm"
+          style={{ width: `${config.progress}%`, background: config.border }}
+        />
+      </div>
+    </div>
+  )
+}
 
+function PriorityBadge({ priority }) {
+  const style =
+    priority === 'Hohe Priorität'
+      ? { background: '#FCEBEB', color: '#A32D2D' }
+      : { background: '#FAEEDA', color: '#633806' }
+
+  return <Badge {...style}>{priority}</Badge>
+}
+
+function Badge({ background, color, children }) {
   return (
     <span
-      className={`inline-flex w-fit items-center rounded-md px-3 py-1 text-xs font-bold ring-1 ${styles[status] || 'bg-slate-100 text-slate-800 ring-slate-200'}`}
+      className="inline-flex items-center rounded-[var(--border-radius-md)] px-2 py-1 text-xs font-medium"
+      style={{ background, color }}
     >
-      {status}
+      {children}
     </span>
   )
 }
 
-function EmptyState({ text }) {
+function StatusIcon({ icon }) {
+  const paths = {
+    'ti-file-invoice': (
+      <>
+        <path d="M14 3v4a1 1 0 0 0 1 1h4" />
+        <path d="M17 21H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7l5 5v11a2 2 0 0 1-2 2z" />
+        <path d="M9 7h1" />
+        <path d="M9 13h6" />
+        <path d="M13 17h2" />
+      </>
+    ),
+    'ti-speakerphone': (
+      <>
+        <path d="M18 8a3 3 0 0 1 0 6" />
+        <path d="M10 8v11a1 1 0 0 1-1 1H8a1 1 0 0 1-1-1v-5" />
+        <path d="M12 8l6-4v14l-6-4H6a2 2 0 0 1 0-4h6" />
+      </>
+    ),
+    'ti-calendar-check': (
+      <>
+        <path d="M11.5 21H6a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v6" />
+        <path d="M16 3v4" />
+        <path d="M8 3v4" />
+        <path d="M4 11h16" />
+        <path d="m15 19 2 2 4-4" />
+      </>
+    ),
+  }
+
   return (
-    <div className="rounded-lg border border-dashed border-slate-300 bg-white/80 p-5 text-sm text-slate-500">
-      {text}
-    </div>
+    <svg
+      className={`ti ${icon} h-5 w-5`}
+      aria-hidden="true"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      {paths[icon]}
+    </svg>
   )
+}
+
+function getLatestUpdate(entries) {
+  const timestamps = entries
+    .map((entry) => Date.parse(`${entry.updatedAt}T00:00:00`))
+    .filter(Number.isFinite)
+  if (timestamps.length === 0) return null
+  return new Date(Math.max(...timestamps))
+}
+
+function entryMatchesFilter(entry, activeFilter) {
+  if (activeFilter === 'alle') return true
+  return normalizeStatus(entry.status) === activeFilter || getOwner(entry).key === activeFilter
+}
+
+function normalizeKnownStatus(status) {
+  if (status === 'Erledigt') return 'Erledigt'
+  if (status === 'Neu') return 'Neu'
+  return 'Offen'
+}
+
+function normalizeStatus(status) {
+  return normalizeKnownStatus(status).toLowerCase()
+}
+
+function getOwner(entry) {
+  if (entry.owner === 'Operator' || entry.owner === 'Techbuddy') {
+    return { key: entry.owner.toLowerCase(), label: entry.owner }
+  }
+  if (entry.category === 'Marketing & Sichtbarkeit' || entry.status === 'Neu') {
+    return { key: 'techbuddy', label: 'Techbuddy' }
+  }
+  return { key: 'operator', label: 'Operator' }
+}
+
+function getPriority(entry) {
+  const status = normalizeKnownStatus(entry.status)
+  if (status === 'Erledigt') return null
+  if (entry.priority === 'Hohe Priorität' || entry.priority === 'Mittlere Priorität') {
+    return entry.priority
+  }
+  if (entry.status === 'Dringend' || getDaysUntil(getDueDate(entry)) < 5) return 'Hohe Priorität'
+  return 'Mittlere Priorität'
+}
+
+function getDisplayTitle(entry, status) {
+  const topic = categoryTopics[entry.category] || entry.title || 'Statusmeldung'
+  const statement = categoryStatusStatements[entry.category]?.[status] || statusStatements[status]
+  return `${topic}: ${statement}`
+}
+
+function getDescription(entry, status, owner) {
+  const topic = descriptionObjects[entry.category] || entry.title || 'das Thema'
+  if (status === 'Erledigt') {
+    return `${owner} hat ${topic} abgeschlossen; kein Handlungsbedarf Ihrerseits.`
+  }
+  if (status === 'Neu') {
+    return `${owner} bereitet ${topic} vor und aktualisiert den Status nach der internen Freigabe.`
+  }
+  return `${owner} prüft ${topic} und aktualisiert den Status nach Eingang der Rückmeldung.`
+}
+
+function getDueDate(entry) {
+  const explicitDate = Date.parse(`${entry.dueDate}T00:00:00`)
+  if (Number.isFinite(explicitDate)) return new Date(explicitDate)
+
+  const baseDate = Date.parse(`${entry.updatedAt || entry.createdAt}T00:00:00`)
+  const date = Number.isFinite(baseDate) ? new Date(baseDate) : new Date()
+  const daysToAdd = normalizeKnownStatus(entry.status) === 'Erledigt' ? 0 : 7
+  date.setDate(date.getDate() + daysToAdd)
+  return date
+}
+
+function getDaysUntil(date) {
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  const compareDate = new Date(date)
+  compareDate.setHours(0, 0, 0, 0)
+  return Math.ceil((compareDate - today) / 86400000)
+}
+
+function toDateInputValue(date) {
+  return date.toISOString().slice(0, 10)
+}
+
+function formatRelativeDate(date) {
+  return formatDistance(date, 'vor')
+}
+
+function formatRelativeUpdated(dateValue) {
+  const timestamp = Date.parse(`${dateValue}T00:00:00`)
+  if (!Number.isFinite(timestamp)) return 'ohne Datum'
+  return formatDistance(new Date(timestamp), 'vor')
+}
+
+function formatDistance(date, prefix) {
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  const compareDate = new Date(date)
+  compareDate.setHours(0, 0, 0, 0)
+  const diffDays = Math.round((today - compareDate) / 86400000)
+
+  if (diffDays === 0) return 'heute'
+  if (diffDays === 1) return `${prefix} 1 Tag`
+  if (diffDays > 1) return `${prefix} ${diffDays} Tagen`
+  if (diffDays === -1) return 'morgen'
+  return `in ${Math.abs(diffDays)} Tagen`
+}
+
+function capitalize(value) {
+  return value.charAt(0).toUpperCase() + value.slice(1)
 }

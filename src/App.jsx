@@ -5,15 +5,22 @@ import {
   createInitialStatusEntries,
   formatDate,
   normalizeStatusEntries,
+  ownerOptions,
+  priorityOptions,
   statusOptions,
 } from './statusData.js'
+
+const today = new Date().toISOString().slice(0, 10)
 
 const emptyStatusEntry = {
   category: categories[0],
   title: '',
   status: statusOptions[0],
-  createdAt: new Date().toISOString().slice(0, 10),
-  updatedAt: new Date().toISOString().slice(0, 10),
+  owner: ownerOptions[0],
+  priority: priorityOptions[0],
+  createdAt: today,
+  updatedAt: today,
+  dueDate: today,
   description: '',
 }
 
@@ -342,7 +349,7 @@ function StatusManager({ statusEntries, setStatusEntries }) {
           <ManageRow
             key={entry.id}
             title={entry.title}
-            meta={`${entry.category} · ${entry.status} · ${formatDate(entry.updatedAt)}`}
+            meta={`${entry.category} · ${entry.status} · ${entry.owner} · fällig ${formatDate(entry.dueDate)}`}
             onEdit={() => editEntry(entry)}
             onRequestDelete={() => setConfirmDeleteId(entry.id)}
             onConfirmDelete={() => deleteEntry(entry.id)}
@@ -390,14 +397,49 @@ function EntryForm({ draft, setDraft, onSubmit, editing, onCancel }) {
           required
         />
       </Field>
-      <Field label="Datum letzter Stand">
-        <input
-          type="date"
-          value={draft.updatedAt}
-          onChange={(event) => setDraft({ ...draft, updatedAt: event.target.value })}
-          className={inputClass}
-        />
-      </Field>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Field label="Verantwortlicher">
+          <select
+            value={draft.owner}
+            onChange={(event) => setDraft({ ...draft, owner: event.target.value })}
+            className={inputClass}
+          >
+            {ownerOptions.map((owner) => (
+              <option key={owner}>{owner}</option>
+            ))}
+          </select>
+        </Field>
+        <Field label="Priorität">
+          <select
+            value={draft.priority}
+            onChange={(event) => setDraft({ ...draft, priority: event.target.value })}
+            className={inputClass}
+          >
+            <option value="">Keine Priorität</option>
+            {priorityOptions.map((priority) => (
+              <option key={priority}>{priority}</option>
+            ))}
+          </select>
+        </Field>
+      </div>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Field label="Datum letzter Stand">
+          <input
+            type="date"
+            value={draft.updatedAt}
+            onChange={(event) => setDraft({ ...draft, updatedAt: event.target.value })}
+            className={inputClass}
+          />
+        </Field>
+        <Field label="Fälligkeitsdatum">
+          <input
+            type="date"
+            value={draft.dueDate}
+            onChange={(event) => setDraft({ ...draft, dueDate: event.target.value })}
+            className={inputClass}
+          />
+        </Field>
+      </div>
       <Field label="Beschreibung">
         <textarea
           value={draft.description}

@@ -36,8 +36,11 @@ function validData() {
         category: 'Finanzierung & Bank',
         title: 'Unterlagen',
         status: 'In Bearbeitung',
+        owner: 'Operator',
+        priority: 'Hohe Priorität',
         createdAt: '2026-05-20',
         updatedAt: '2026-05-21',
+        dueDate: '2026-05-28',
         description: 'Prüfung läuft.',
       },
     ],
@@ -138,7 +141,10 @@ test('PUT stores normalized valid data', async () => {
     'category',
     'createdAt',
     'description',
+    'dueDate',
     'id',
+    'owner',
+    'priority',
     'status',
     'title',
     'updatedAt',
@@ -167,6 +173,24 @@ test('PUT accepts legacy status entries without createdAt', async () => {
 
   expect(response.status).toBe(200)
   expect(body.statusEntries[0].createdAt).toBe('2026-05-21')
+})
+
+test('PUT adds default dashboard fields for legacy status entries', async () => {
+  const data = validData()
+  delete data.statusEntries[0].owner
+  delete data.statusEntries[0].priority
+  delete data.statusEntries[0].dueDate
+
+  const response = await onRequestPut({
+    request: jsonRequest(data),
+    env: { APP_TARGET: 'admin', STATUS_STORE: createStore() },
+  })
+  const body = await response.json()
+
+  expect(response.status).toBe(200)
+  expect(body.statusEntries[0].owner).toBe('Operator')
+  expect(body.statusEntries[0].priority).toBe('Mittlere Priorität')
+  expect(body.statusEntries[0].dueDate).toBe('2026-05-28')
 })
 
 test('PUT preserves urgent status', async () => {

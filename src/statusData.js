@@ -15,6 +15,8 @@ export const categoryMigration = {
 }
 
 export const statusOptions = ['Neu', 'Dringend', 'Offen', 'Erledigt']
+export const ownerOptions = ['Operator', 'Techbuddy']
+export const priorityOptions = ['Mittlere Priorität', 'Hohe Priorität']
 
 export const statusMigration = {
   'Antwort ausstehend': 'Offen',
@@ -29,8 +31,11 @@ export function createInitialStatusEntries() {
       category: 'Auszahlungen & Vergütung',
       title: 'Rückmeldung Zahlungsunterlagen',
       status: 'Offen',
+      owner: 'Operator',
+      priority: 'Hohe Priorität',
       createdAt: '2026-05-18',
       updatedAt: '2026-05-18',
+      dueDate: '2026-05-25',
       description:
         'Die eingereichten Unterlagen liegen zur Prüfung vor. Der nächste Stand wird nach Eingang der Rückmeldung ergänzt.',
     },
@@ -39,8 +44,11 @@ export function createInitialStatusEntries() {
       category: 'Marketing & Sichtbarkeit',
       title: 'Abstimmung Kampagnenmaterial',
       status: 'Neu',
+      owner: 'Techbuddy',
+      priority: 'Mittlere Priorität',
       createdAt: '2026-05-20',
       updatedAt: '2026-05-20',
+      dueDate: '2026-05-27',
       description:
         'Entwürfe werden intern konsolidiert und anschließend für die Freigabe vorbereitet.',
     },
@@ -49,8 +57,11 @@ export function createInitialStatusEntries() {
       category: 'Termine & Koordination',
       title: 'Terminplanung Expertenrunde',
       status: 'Erledigt',
+      owner: 'Operator',
+      priority: '',
       createdAt: '2026-05-16',
       updatedAt: '2026-05-16',
+      dueDate: '2026-05-16',
       description:
         'Die Terminserie ist bestätigt. Weitere Änderungen werden separat dokumentiert.',
     },
@@ -65,7 +76,33 @@ export function normalizeStatusEntries(rawData, fallbackEntries = createInitialS
     category: categoryMigration[entry.category] || entry.category,
     status: statusMigration[entry.status] || entry.status,
     createdAt: entry.createdAt || entry.updatedAt,
+    owner: ownerOptions.includes(entry.owner) ? entry.owner : inferOwner(entry),
+    priority: priorityOptions.includes(entry.priority) ? entry.priority : inferPriority(entry),
+    dueDate: entry.dueDate || inferDueDate(entry),
   }))
+}
+
+function inferOwner(entry) {
+  if (entry.category === 'Marketing' || entry.category === 'Marketing & Sichtbarkeit' || entry.status === 'Neu') {
+    return 'Techbuddy'
+  }
+  return 'Operator'
+}
+
+function inferPriority(entry) {
+  const status = statusMigration[entry.status] || entry.status
+  if (status === 'Erledigt') return ''
+  if (status === 'Dringend') return 'Hohe Priorität'
+  return 'Mittlere Priorität'
+}
+
+function inferDueDate(entry) {
+  const dateValue = entry.updatedAt || entry.createdAt
+  if (!dateValue) return new Date().toISOString().slice(0, 10)
+  const date = new Date(`${dateValue}T00:00:00Z`)
+  const status = statusMigration[entry.status] || entry.status
+  date.setUTCDate(date.getUTCDate() + (status === 'Erledigt' ? 0 : 7))
+  return date.toISOString().slice(0, 10)
 }
 
 export function formatDate(dateValue) {

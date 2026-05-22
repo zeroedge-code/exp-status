@@ -17,6 +17,8 @@ const categoryMigration = {
 }
 
 const statusOptions = ['Neu', 'Dringend', 'Offen', 'Erledigt']
+const ownerOptions = ['Operator', 'Techbuddy']
+const priorityOptions = ['Mittlere Priorität', 'Hohe Priorität', '']
 
 const statusMigration = {
   'Antwort ausstehend': 'Offen',
@@ -34,8 +36,11 @@ const defaultData = {
       category: 'Auszahlungen & Vergütung',
       title: 'Rückmeldung Zahlungsunterlagen',
       status: 'Offen',
+      owner: 'Operator',
+      priority: 'Hohe Priorität',
       createdAt: '2026-05-18',
       updatedAt: '2026-05-18',
+      dueDate: '2026-05-25',
       description:
         'Die eingereichten Unterlagen liegen zur Prüfung vor. Der nächste Stand wird nach Eingang der Rückmeldung ergänzt.',
     },
@@ -44,8 +49,11 @@ const defaultData = {
       category: 'Marketing & Sichtbarkeit',
       title: 'Abstimmung Kampagnenmaterial',
       status: 'Neu',
+      owner: 'Techbuddy',
+      priority: 'Mittlere Priorität',
       createdAt: '2026-05-20',
       updatedAt: '2026-05-20',
+      dueDate: '2026-05-27',
       description:
         'Entwürfe werden intern konsolidiert und anschließend für die Freigabe vorbereitet.',
     },
@@ -54,8 +62,11 @@ const defaultData = {
       category: 'Termine & Koordination',
       title: 'Terminplanung Expertenrunde',
       status: 'Erledigt',
+      owner: 'Operator',
+      priority: '',
       createdAt: '2026-05-16',
       updatedAt: '2026-05-16',
+      dueDate: '2026-05-16',
       description:
         'Die Terminserie ist bestätigt. Weitere Änderungen werden separat dokumentiert.',
     },
@@ -96,16 +107,41 @@ function cleanString(value) {
   return typeof value === 'string' ? value.trim() : ''
 }
 
+function inferOwner(entry, status) {
+  if (entry.category === 'Marketing' || entry.category === 'Marketing & Sichtbarkeit' || status === 'Neu') {
+    return 'Techbuddy'
+  }
+  return 'Operator'
+}
+
+function inferPriority(status) {
+  if (status === 'Erledigt') return ''
+  if (status === 'Dringend') return 'Hohe Priorität'
+  return 'Mittlere Priorität'
+}
+
+function inferDueDate(entry, status) {
+  const dateValue = entry.updatedAt || entry.createdAt
+  if (!isValidDateString(dateValue)) return ''
+  const date = new Date(`${dateValue}T00:00:00Z`)
+  date.setUTCDate(date.getUTCDate() + (status === 'Erledigt' ? 0 : 7))
+  return date.toISOString().slice(0, 10)
+}
+
 function normalizeStatusEntry(entry) {
   if (!isRecord(entry)) return null
+  const status = normalizeStatus(entry.status)
 
   const normalized = {
     id: cleanString(entry.id),
     category: normalizeCategory(entry.category),
     title: cleanString(entry.title),
-    status: normalizeStatus(entry.status),
+    status,
+    owner: ownerOptions.includes(entry.owner) ? entry.owner : inferOwner(entry, status),
+    priority: priorityOptions.includes(entry.priority) ? entry.priority : inferPriority(status),
     createdAt: entry.createdAt || entry.updatedAt,
     updatedAt: entry.updatedAt,
+    dueDate: entry.dueDate || inferDueDate(entry, status),
     description: cleanString(entry.description),
   }
 
@@ -114,8 +150,11 @@ function normalizeStatusEntry(entry) {
     !categories.includes(normalized.category) ||
     !normalized.title ||
     !statusOptions.includes(normalized.status) ||
+    !ownerOptions.includes(normalized.owner) ||
+    !priorityOptions.includes(normalized.priority) ||
     !isValidDateString(normalized.createdAt) ||
-    !isValidDateString(normalized.updatedAt)
+    !isValidDateString(normalized.updatedAt) ||
+    !isValidDateString(normalized.dueDate)
   ) {
     return null
   }
