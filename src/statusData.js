@@ -33,6 +33,7 @@ export function createInitialStatusEntries() {
       status: 'Offen',
       owner: 'Operator',
       priority: 'Hohe Priorität',
+      showProgress: false,
       createdAt: '2026-05-18',
       updatedAt: '2026-05-18',
       dueDate: '2026-05-25',
@@ -46,6 +47,7 @@ export function createInitialStatusEntries() {
       status: 'Neu',
       owner: 'Techbuddy',
       priority: 'Mittlere Priorität',
+      showProgress: false,
       createdAt: '2026-05-20',
       updatedAt: '2026-05-20',
       dueDate: '2026-05-27',
@@ -59,6 +61,7 @@ export function createInitialStatusEntries() {
       status: 'Erledigt',
       owner: 'Operator',
       priority: '',
+      showProgress: false,
       createdAt: '2026-05-16',
       updatedAt: '2026-05-16',
       dueDate: '2026-05-16',
@@ -78,6 +81,7 @@ export function normalizeStatusEntries(rawData, fallbackEntries = createInitialS
     createdAt: entry.createdAt || entry.updatedAt,
     owner: ownerOptions.includes(entry.owner) ? entry.owner : inferOwner(entry),
     priority: priorityOptions.includes(entry.priority) ? entry.priority : inferPriority(entry),
+    showProgress: Boolean(entry.showProgress),
     dueDate: entry.dueDate || inferDueDate(entry),
   }))
 }

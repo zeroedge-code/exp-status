@@ -38,6 +38,7 @@ function validData() {
         status: 'In Bearbeitung',
         owner: 'Operator',
         priority: 'Hohe Priorität',
+        showProgress: true,
         createdAt: '2026-05-20',
         updatedAt: '2026-05-21',
         dueDate: '2026-05-28',
@@ -145,6 +146,7 @@ test('PUT stores normalized valid data', async () => {
     'id',
     'owner',
     'priority',
+    'showProgress',
     'status',
     'title',
     'updatedAt',
@@ -179,6 +181,7 @@ test('PUT adds default dashboard fields for legacy status entries', async () => 
   const data = validData()
   delete data.statusEntries[0].owner
   delete data.statusEntries[0].priority
+  delete data.statusEntries[0].showProgress
   delete data.statusEntries[0].dueDate
 
   const response = await onRequestPut({
@@ -190,6 +193,7 @@ test('PUT adds default dashboard fields for legacy status entries', async () => 
   expect(response.status).toBe(200)
   expect(body.statusEntries[0].owner).toBe('Operator')
   expect(body.statusEntries[0].priority).toBe('Mittlere Priorität')
+  expect(body.statusEntries[0].showProgress).toBe(false)
   expect(body.statusEntries[0].dueDate).toBe('2026-05-28')
 })
 

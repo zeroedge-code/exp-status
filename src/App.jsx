@@ -18,6 +18,7 @@ const emptyStatusEntry = {
   status: statusOptions[0],
   owner: ownerOptions[0],
   priority: priorityOptions[0],
+  showProgress: false,
   createdAt: today,
   updatedAt: today,
   dueDate: today,
@@ -440,6 +441,15 @@ function EntryForm({ draft, setDraft, onSubmit, editing, onCancel }) {
           />
         </Field>
       </div>
+      <label className="flex items-center gap-2 text-sm font-medium text-slate-700">
+        <input
+          type="checkbox"
+          checked={Boolean(draft.showProgress)}
+          onChange={(event) => setDraft({ ...draft, showProgress: event.target.checked })}
+          className="h-4 w-4 rounded border-slate-300 text-teal-800 focus:ring-teal-700"
+        />
+        Fortschrittsbalken anzeigen
+      </label>
       <Field label="Beschreibung">
         <textarea
           value={draft.description}

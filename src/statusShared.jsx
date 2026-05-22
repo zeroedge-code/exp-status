@@ -176,7 +176,7 @@ function StatusCard({ entry }) {
           <p className="mt-3 text-sm leading-6 text-[var(--color-text-secondary)]">
             {entry.description}
           </p>
-          <ProgressBar config={config} />
+          {entry.showProgress && <ProgressBar config={config} />}
           <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-[var(--color-text-tertiary)]">
               <span className={dueSoon ? 'font-medium text-[#A32D2D]' : ''}>
