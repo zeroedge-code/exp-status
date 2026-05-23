@@ -24,9 +24,9 @@ Cloudflare Access should protect `exp-status` for experts and admin users, and `
 ## Iframe Embedding
 
 The Cloudflare Pages Function sends this HTTP header by default so the status
-app can be embedded by smartoder.com:
+app can be embedded by the parent site:
 
-- `Content-Security-Policy: frame-ancestors 'self' https://smartoder.com`
+- `Content-Security-Policy: frame-ancestors 'self' https://YOUR-PARENT-SITE.com`
 
 It also removes `X-Frame-Options` from those responses, because `DENY` or
 `SAMEORIGIN` would block the iframe even when CSP allows it.
@@ -34,7 +34,7 @@ It also removes `X-Frame-Options` from those responses, because `DENY` or
 To override the default, set this Cloudflare Pages environment variable on the
 app that should be embedded:
 
-- `ALLOWED_FRAME_ANCESTORS='self' https://smartoder.com`
+- `ALLOWED_FRAME_ANCESTORS='self' https://YOUR-PARENT-SITE.com`
 
 Multiple origins can be separated by spaces or commas.
 

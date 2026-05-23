@@ -1,3 +1,3 @@
 /*
-  ! X-Frame-Options
-  Content-Security-Policy: frame-ancestors 'self' https://smartoder.com
+  Content-Security-Policy: frame-ancestors 'self' https://YOUR-PARENT-SITE.com
+  X-Test-Headers: cloudflare-pages-working
