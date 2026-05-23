@@ -17,23 +17,23 @@ test('parseAllowedFrameAncestors accepts comma and space separated origins', () 
 })
 
 test('getAllowedFrameAncestors falls back to the default when blank', () => {
-  expect(getAllowedFrameAncestors('')).toBe("'self' https://YOUR-PARENT-SITE.com")
+  expect(getAllowedFrameAncestors('')).toBe("'self' https://smartoder.com")
 })
 
 test('withFrameAncestors replaces an existing frame-ancestors directive', () => {
   expect(
     withFrameAncestors(
       "default-src 'self'; frame-ancestors 'none'; script-src 'self'",
-      ["'self'", 'https://YOUR-PARENT-SITE.com'],
+      ["'self'", 'https://smartoder.com'],
     ),
   ).toBe(
-    "default-src 'self'; script-src 'self'; frame-ancestors 'self' https://YOUR-PARENT-SITE.com",
+    "default-src 'self'; script-src 'self'; frame-ancestors 'self' https://smartoder.com",
   )
 })
 
 test('middleware adds CSP frame-ancestors and removes X-Frame-Options when configured', async () => {
   const response = await onRequest({
-    env: { ALLOWED_FRAME_ANCESTORS: "'self' https://YOUR-PARENT-SITE.com" },
+    env: { ALLOWED_FRAME_ANCESTORS: "'self' https://smartoder.com" },
     next: async () =>
       new Response('ok', {
         headers: {
@@ -44,7 +44,7 @@ test('middleware adds CSP frame-ancestors and removes X-Frame-Options when confi
   })
 
   expect(response.headers.get('Content-Security-Policy')).toBe(
-    "frame-ancestors 'self' https://YOUR-PARENT-SITE.com",
+    "frame-ancestors 'self' https://smartoder.com",
   )
   expect(response.headers.get('X-Frame-Options')).toBeNull()
   expect(await response.text()).toBe('ok')
@@ -60,7 +60,7 @@ test('middleware uses the configured frame ancestor by default', async () => {
   })
 
   expect(response.headers.get('Content-Security-Policy')).toBe(
-    "frame-ancestors 'self' https://YOUR-PARENT-SITE.com",
+    "frame-ancestors 'self' https://smartoder.com",
   )
   expect(response.headers.get('X-Frame-Options')).toBeNull()
   expect(await response.text()).toBe('ok')
@@ -76,7 +76,7 @@ test('middleware falls back to the default frame ancestors when the env var is b
   })
 
   expect(response.headers.get('Content-Security-Policy')).toBe(
-    "frame-ancestors 'self' https://YOUR-PARENT-SITE.com",
+    "frame-ancestors 'self' https://smartoder.com",
   )
   expect(response.headers.get('X-Frame-Options')).toBeNull()
   expect(await response.text()).toBe('ok')

@@ -1,4 +1,4 @@
-const DEFAULT_FRAME_ANCESTORS = "'self' https://YOUR-PARENT-SITE.com"
+const DEFAULT_FRAME_ANCESTORS = "'self' https://smartoder.com"
 
 function getAllowedFrameAncestors(value) {
   if (typeof value !== 'string') return DEFAULT_FRAME_ANCESTORS
