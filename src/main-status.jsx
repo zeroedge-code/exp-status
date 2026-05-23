@@ -2,28 +2,39 @@ import { StrictMode, useEffect, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
 import { StatusPage } from './statusShared.jsx'
-import { createInitialStatusEntries, normalizeStatusEntries } from './statusData.js'
+import {
+  createInitialStatusEntries,
+  defaultDisplaySettings,
+  normalizeDisplaySettings,
+  normalizeStatusEntries,
+} from './statusData.js'
 
 const initialStatusEntries = createInitialStatusEntries()
 
-async function fetchStatusEntries() {
+async function fetchStatusData() {
   const response = await fetch('/api/status', {
     headers: { Accept: 'application/json' },
   })
   if (!response.ok) throw new Error('Statusdaten konnten nicht geladen werden.')
-  return normalizeStatusEntries(await response.json(), initialStatusEntries)
+  const payload = await response.json()
+  return {
+    statusEntries: normalizeStatusEntries(payload, initialStatusEntries),
+    settings: normalizeDisplaySettings(payload),
+  }
 }
 
 export function StatusApp() {
   const [statusEntries, setStatusEntries] = useState(initialStatusEntries)
+  const [settings, setSettings] = useState(defaultDisplaySettings)
   const [loadError, setLoadError] = useState('')
 
   useEffect(() => {
     let active = true
-    fetchStatusEntries()
-      .then((entries) => {
+    fetchStatusData()
+      .then((data) => {
         if (!active) return
-        setStatusEntries(entries)
+        setStatusEntries(data.statusEntries)
+        setSettings(data.settings)
         setLoadError('')
       })
       .catch((error) => {
@@ -42,7 +53,7 @@ export function StatusApp() {
           <div className="mx-auto max-w-7xl">{loadError}</div>
         </div>
       )}
-      <StatusPage statusEntries={statusEntries} />
+      <StatusPage statusEntries={statusEntries} settings={settings} />
     </div>
   )
 }

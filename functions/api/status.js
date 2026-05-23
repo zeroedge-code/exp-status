@@ -21,6 +21,15 @@ const ownerOptions = ['Operator', 'Techbuddy']
 const typeOptions = ['info', 'task', 'process']
 const priorityOptions = ['Mittlere Priorität', 'Hohe Priorität', '']
 
+const defaultSettings = {
+  showHeaderSummary: true,
+  showNextDue: true,
+  showStats: true,
+  showFilters: true,
+  showCategories: true,
+  showProgress: true,
+}
+
 const statusMigration = {
   'Antwort ausstehend': 'Offen',
   'In Bearbeitung': 'Offen',
@@ -78,6 +87,7 @@ const defaultData = {
         'Die Terminserie ist bestätigt. Weitere Änderungen werden separat dokumentiert.',
     },
   ],
+  settings: defaultSettings,
   tasks: [],
 }
 
@@ -203,11 +213,23 @@ function normalizeTask(task) {
   return normalized
 }
 
+function normalizeSettings(settings) {
+  if (!isRecord(settings)) return defaultSettings
+
+  return Object.fromEntries(
+    Object.entries(defaultSettings).map(([key, fallback]) => [
+      key,
+      typeof settings[key] === 'boolean' ? settings[key] : fallback,
+    ]),
+  )
+}
+
 function normalizeData(rawData) {
   return {
     statusEntries: Array.isArray(rawData?.statusEntries)
       ? rawData.statusEntries.map(normalizeStatusEntry).filter(Boolean)
       : [],
+    settings: normalizeSettings(rawData?.settings),
     tasks: Array.isArray(rawData?.tasks)
       ? rawData.tasks.map(normalizeTask).filter(Boolean)
       : [],
@@ -237,6 +259,16 @@ function validateData(rawData) {
     rawData.tasks.forEach((task, index) => {
       if (!normalizeTask(task)) {
         errors.push(`tasks[${index}] is invalid.`)
+      }
+    })
+  }
+
+  if (rawData.settings !== undefined && !isRecord(rawData.settings)) {
+    errors.push('settings must be an object.')
+  } else if (isRecord(rawData.settings)) {
+    Object.keys(defaultSettings).forEach((key) => {
+      if (rawData.settings[key] !== undefined && typeof rawData.settings[key] !== 'boolean') {
+        errors.push(`settings.${key} must be a boolean.`)
       }
     })
   }

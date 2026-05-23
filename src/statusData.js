@@ -19,6 +19,15 @@ export const ownerOptions = ['Operator', 'Techbuddy']
 export const priorityOptions = ['Mittlere Priorität', 'Hohe Priorität']
 export const typeOptions = ['info', 'task', 'process']
 
+export const defaultDisplaySettings = {
+  showHeaderSummary: true,
+  showNextDue: true,
+  showStats: true,
+  showFilters: true,
+  showCategories: true,
+  showProgress: true,
+}
+
 export const statusMigration = {
   'Antwort ausstehend': 'Offen',
   'In Bearbeitung': 'Offen',
@@ -89,6 +98,20 @@ export function normalizeStatusEntries(rawData, fallbackEntries = createInitialS
     showProgress: entry.type === 'process' || Boolean(entry.showProgress),
     dueDate: entry.dueDate || inferDueDate(entry),
   }))
+}
+
+export function normalizeDisplaySettings(rawData) {
+  const settings = rawData?.settings
+  if (!settings || typeof settings !== 'object' || Array.isArray(settings)) {
+    return defaultDisplaySettings
+  }
+
+  return Object.fromEntries(
+    Object.entries(defaultDisplaySettings).map(([key, fallback]) => [
+      key,
+      typeof settings[key] === 'boolean' ? settings[key] : fallback,
+    ]),
+  )
 }
 
 function inferType(entry) {

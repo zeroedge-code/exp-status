@@ -1,33 +1,31 @@
 import { useState } from 'react'
-import { categories, formatDate } from './statusData.js'
+import { categories, defaultDisplaySettings, formatDate } from './statusData.js'
 
-const filterOptions = ['Alle', 'Offen', 'Neu', 'Erledigt', 'Operator', 'Techbuddy']
+const statusFilterOptions = ['Alle', 'Offen', 'Neu', 'Erledigt']
+const ownerFilterOptions = ['Operator', 'Techbuddy']
 
 const statusConfig = {
   Offen: {
     key: 'offen',
-    border: '#f0ad4e',
-    color: '#8a5a12',
-    iconBg: '#f7f7f7',
-    badgeBg: '#fff8eb',
+    border: 'var(--color-warning)',
+    color: 'var(--color-warning-text)',
+    badgeBg: 'var(--color-warning-soft)',
     progress: 33,
     step: 'Schritt 1 von 3: Rückmeldung',
   },
   Neu: {
     key: 'neu',
-    border: '#337ab7',
-    color: '#2b5f91',
-    iconBg: '#f7f7f7',
-    badgeBg: '#eaf3fb',
+    border: 'var(--color-accent)',
+    color: 'var(--color-accent-text)',
+    badgeBg: 'var(--color-accent-soft)',
     progress: 66,
     step: 'Schritt 2 von 3: Vorbereitung',
   },
   Erledigt: {
     key: 'erledigt',
-    border: '#5cb85c',
-    color: '#3d7f3d',
-    iconBg: '#f7f7f7',
-    badgeBg: '#eef8ee',
+    border: 'var(--color-success)',
+    color: 'var(--color-success-text)',
+    badgeBg: 'var(--color-success-soft)',
     progress: 100,
     step: 'Schritt 3 von 3: Abgeschlossen',
   },
@@ -42,8 +40,10 @@ const categoryIcons = {
 
 export function StatusPage({
   statusEntries,
+  settings = defaultDisplaySettings,
   intro = 'Alle aktuellen Themen, Aufgaben und Infos auf einen Blick.',
 }) {
+  const displaySettings = { ...defaultDisplaySettings, ...settings }
   const [activeFilter, setActiveFilter] = useState('alle')
   const latestUpdate = getLatestUpdate(statusEntries)
   const totalEntries = statusEntries.length
@@ -57,14 +57,16 @@ export function StatusPage({
     const visibleEntries = entries.filter((entry) => entryMatchesFilter(entry, activeFilter))
     return { category, entries, visibleEntries }
   })
+  const openEntries = statusEntries.filter((entry) => normalizeStatus(entry.status) !== 'erledigt')
+  const nextDueEntry = getNextDueEntry(openEntries)
 
   return (
-    <main className="mx-auto max-w-7xl px-4 pb-10">
-      <header className="board-header sticky top-0 z-20 -mx-4 px-4 py-3">
+    <main className="mx-auto max-w-7xl px-4 pb-10 pt-4">
+      <header className="board-header sticky top-0 z-20 rounded-t-[var(--border-radius-lg)] px-4 py-3">
         <div className="mx-auto flex max-w-7xl flex-col gap-2">
           <div className="flex items-center justify-between gap-4">
             <div className="flex min-w-0 items-center gap-3">
-              <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-[var(--color-accent)] ring-4 ring-[#eaf3fb]" />
+              <span className="h-2 w-2 shrink-0 rounded-sm bg-[var(--color-accent)]" />
               <div className="min-w-0">
                 <p className="truncate text-lg font-semibold leading-tight text-[var(--color-text-primary)]">
                   Statusmeldungen
@@ -74,80 +76,91 @@ export function StatusPage({
                 </p>
               </div>
             </div>
-            <time className="shrink-0 rounded-full border border-[#d6d6d6] bg-white px-3 py-1 font-mono text-xs tracking-[0.03em] text-[var(--color-text-secondary)]">
-              {formatCurrentTime()}
-            </time>
+            {displaySettings.showHeaderSummary && (
+              <div className="hidden shrink-0 items-center gap-2 rounded border border-[var(--color-border-tertiary)] bg-[var(--color-background-primary)] px-2.5 py-1 text-xs text-[var(--color-text-secondary)] sm:inline-flex">
+                <span className="font-mono text-[var(--color-text-primary)]">{openEntries.length}</span>
+                offen
+                {displaySettings.showNextDue && nextDueEntry && (
+                  <>
+                    <span aria-hidden="true">·</span>
+                    <span className="font-medium text-[var(--color-text-primary)]">
+                      nächste Frist: {getDueText(getDueDate(nextDueEntry))}
+                    </span>
+                  </>
+                )}
+              </div>
+            )}
           </div>
         </div>
       </header>
 
-      <section className="pt-5">
-        <div className="grid grid-cols-3 gap-2.5">
-          {stats.map(({ status, count }) => (
-            <button
-              key={status}
-              type="button"
-              onClick={() => setActiveFilter(statusConfig[status].key)}
-              className={`status-stat-card status-stat-${statusConfig[status].key} rounded-[var(--border-radius-lg)] border border-[var(--color-border-tertiary)] bg-[var(--color-background-primary)] px-3 py-4 text-center transition hover:border-[var(--color-border-secondary)]`}
-            >
-              <span className="block font-mono text-[28px] font-medium leading-none" style={{ color: statusConfig[status].color }}>
-                {count}
-              </span>
-              <span className="mt-1 block text-xs font-semibold uppercase tracking-[0.06em] text-[var(--color-text-secondary)]">
-                {status}
-              </span>
-            </button>
-          ))}
-        </div>
-      </section>
-
-      <div className="-mx-4 mt-4 overflow-x-auto px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        <div className="flex w-max gap-2">
-          {filterOptions.map((filter) => {
-            const filterKey = filter.toLowerCase()
-            const isActive = activeFilter === filterKey
-            return (
+      {displaySettings.showStats && (
+        <section className="pt-5">
+          <div className="grid grid-cols-3 gap-2.5">
+            {stats.map(({ status, count }) => (
               <button
-                key={filter}
+                key={status}
                 type="button"
-                onClick={() => setActiveFilter(filterKey)}
-                className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border px-4 py-2 text-sm font-medium transition ${
-                  isActive
-                    ? 'border-[var(--color-accent)] bg-[var(--color-accent)] text-white'
-                    : 'border-[var(--color-border-tertiary)] bg-[var(--color-background-secondary)] text-[var(--color-text-secondary)] hover:border-[var(--color-border-secondary)] hover:bg-white'
+                onClick={() => setActiveFilter(statusConfig[status].key)}
+                className={`status-stat-card status-stat-${statusConfig[status].key} rounded-[var(--border-radius-md)] border bg-[var(--color-background-primary)] px-3 py-3 text-center transition hover:border-[var(--color-border-secondary)] ${
+                  activeFilter === statusConfig[status].key
+                    ? 'border-[var(--color-border-secondary)] shadow-sm'
+                    : 'border-[var(--color-border-tertiary)]'
                 }`}
               >
-                {filter}
-                <span className={`rounded-full px-1.5 py-0.5 font-mono text-xs ${
-                  isActive ? 'bg-black/20 text-white' : 'bg-white text-[var(--color-text-secondary)]'
-                }`}>
-                  {getFilterCount(statusEntries, filterKey)}
+                <span className="block font-mono text-2xl font-medium leading-none text-[var(--color-text-primary)]">
+                  {count}
+                </span>
+                <span className="mt-1 block text-xs font-semibold uppercase tracking-[0.06em] text-[var(--color-text-secondary)]">
+                  {status}
                 </span>
               </button>
-            )
-          })}
+            ))}
+          </div>
+        </section>
+      )}
+
+      {displaySettings.showFilters && (
+        <div className="-mx-4 mt-4 flex gap-3 overflow-x-auto px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <FilterGroup
+            label="Status"
+            options={statusFilterOptions}
+            entries={statusEntries}
+            activeFilter={activeFilter}
+            setActiveFilter={setActiveFilter}
+          />
+          <FilterGroup
+            label="Verantwortung"
+            options={ownerFilterOptions}
+            entries={statusEntries}
+            activeFilter={activeFilter}
+            setActiveFilter={setActiveFilter}
+          />
         </div>
-      </div>
+      )}
 
       <div className="mt-5 space-y-5">
         {groupedEntries
           .filter(({ visibleEntries }) => visibleEntries.length > 0)
           .map(({ category, visibleEntries }) => (
             <section key={category}>
-              <div className="mb-2.5 flex items-center gap-2">
-                <div className="flex h-6 w-6 items-center justify-center rounded-[7px] bg-[var(--color-background-secondary)] text-[var(--color-text-secondary)]">
-                  <StatusIcon icon={categoryIcons[category] || 'ti-inbox'} />
+              {displaySettings.showCategories && (
+                <div className="mb-2.5 flex items-center gap-2">
+                  <div className="flex h-6 w-6 items-center justify-center rounded border border-[var(--color-border-tertiary)] bg-[var(--color-background-secondary)] text-[var(--color-text-secondary)]">
+                    <StatusIcon icon={categoryIcons[category] || 'ti-inbox'} />
+                  </div>
+                  <h2 className="flex-1 text-sm font-semibold uppercase tracking-[0.06em] text-[var(--color-text-secondary)]">
+                    {category}
+                  </h2>
                 </div>
-                <h2 className="flex-1 text-sm font-semibold uppercase tracking-[0.06em] text-[var(--color-text-secondary)]">
-                  {category}
-                </h2>
-                <span className="rounded-full bg-[var(--color-background-secondary)] px-2 py-0.5 font-mono text-xs text-[var(--color-text-secondary)]">
-                  {visibleEntries.length}
-                </span>
-              </div>
+              )}
               <div className="grid gap-2 lg:grid-cols-2">
                 {visibleEntries.map((entry) => (
-                  <StatusCard key={entry.id} entry={entry} />
+                  <StatusCard
+                    key={entry.id}
+                    entry={entry}
+                    showProgress={displaySettings.showProgress}
+                  />
                 ))}
               </div>
             </section>
@@ -157,7 +170,7 @@ export function StatusPage({
   )
 }
 
-function StatusCard({ entry }) {
+function StatusCard({ entry, showProgress }) {
   const status = normalizeKnownStatus(entry.status)
   const config = statusConfig[status]
   const owner = getOwner(entry)
@@ -169,7 +182,7 @@ function StatusCard({ entry }) {
 
   return (
     <article
-      className="status-card-animation relative overflow-hidden rounded-[var(--border-radius-lg)] border border-[var(--color-border-tertiary)] bg-[var(--color-background-primary)] px-4 py-3.5 transition hover:border-[var(--color-border-secondary)]"
+      className="relative overflow-hidden rounded-[var(--border-radius-md)] border border-[var(--color-border-tertiary)] bg-[var(--color-background-primary)] px-4 py-3.5 transition hover:border-[var(--color-border-secondary)]"
       data-status={config.key}
       data-owner={owner.key}
     >
@@ -179,17 +192,21 @@ function StatusCard({ entry }) {
           <h3 className="flex-1 text-base font-semibold leading-snug text-[var(--color-text-primary)]">
             {entry.title}
           </h3>
-          <div className="flex shrink-0 flex-wrap justify-end gap-1.5">
-            {type !== 'info' && priority && <PriorityBadge priority={priority} />}
+          <div className="flex shrink-0 justify-end">
             <Badge background={config.badgeBg} color={config.color}>
               {status}
             </Badge>
           </div>
         </div>
+        {type !== 'info' && priority && (
+          <div className="mb-2">
+            <PriorityBadge priority={priority} />
+          </div>
+        )}
         <p className="mb-3 text-sm leading-6 text-[var(--color-text-secondary)]">
           {entry.description}
         </p>
-        {type === 'process' && <ProgressBar config={config} />}
+        {showProgress && type === 'process' && <ProgressBar config={config} />}
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
             {showDueDate && (
@@ -201,13 +218,46 @@ function StatusCard({ entry }) {
               {capitalize(formatRelativeUpdated(entry.updatedAt))} aktualisiert
             </span>
           </div>
-          <div className={`inline-flex w-fit items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium ${getOwnerClass(owner.key)}`}>
+          <div className={`inline-flex w-fit items-center gap-1.5 rounded border px-2.5 py-1 text-xs font-medium ${getOwnerClass(owner.key)}`}>
             <div className="h-1.5 w-1.5 rounded-full bg-current" />
             {owner.label}
           </div>
         </div>
       </div>
     </article>
+  )
+}
+
+function FilterGroup({ label, options, entries, activeFilter, setActiveFilter }) {
+  return (
+    <div className="flex w-max items-center gap-2 rounded-[var(--border-radius-lg)] border border-[var(--color-border-tertiary)] bg-[var(--color-background-secondary)] p-1">
+      <span className="pl-2 pr-1 text-xs font-semibold uppercase tracking-[0.06em] text-[var(--color-text-tertiary)]">
+        {label}
+      </span>
+      {options.map((filter) => {
+        const filterKey = filter.toLowerCase()
+        const isActive = activeFilter === filterKey
+        return (
+          <button
+            key={filter}
+            type="button"
+            onClick={() => setActiveFilter(filterKey)}
+            className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded border px-2.5 py-1.5 text-sm font-medium transition ${
+              isActive
+                ? 'border-[var(--color-accent)] bg-[var(--color-accent)] text-white'
+                : 'border-transparent bg-transparent text-[var(--color-text-secondary)] hover:border-[var(--color-border-tertiary)] hover:bg-[var(--color-background-primary)]'
+            }`}
+          >
+            {filter}
+            <span className={`rounded px-1.5 py-0.5 font-mono text-xs ${
+              isActive ? 'bg-black/20 text-white' : 'bg-[var(--color-background-primary)] text-[var(--color-text-secondary)]'
+            }`}>
+              {getFilterCount(entries, filterKey)}
+            </span>
+          </button>
+        )
+      })}
+    </div>
   )
 }
 
@@ -231,8 +281,8 @@ function ProgressBar({ config }) {
 function PriorityBadge({ priority }) {
   const style =
     priority === 'Hohe Priorität'
-      ? { background: '#f9eeee', color: '#a94442' }
-      : { background: '#fff8eb', color: '#8a5a12' }
+      ? { background: 'var(--color-danger-soft)', color: 'var(--color-danger-text)' }
+      : { background: 'var(--color-warning-soft)', color: 'var(--color-warning-text)' }
 
   return <Badge {...style}>{priority}</Badge>
 }
@@ -241,7 +291,7 @@ function Badge({ background, color, children }) {
   return (
     <span
       className="inline-flex items-center rounded-[var(--border-radius-md)] border px-2 py-1 text-xs font-medium"
-      style={{ background, color, borderColor: color === '#2b5f91' ? '#c9dced' : 'rgba(0,0,0,0.12)' }}
+      style={{ background, color, borderColor: 'var(--color-badge-border)' }}
     >
       {children}
     </span>
@@ -316,6 +366,14 @@ function getLatestUpdate(entries) {
   return new Date(Math.max(...timestamps))
 }
 
+function getNextDueEntry(entries) {
+  return entries
+    .filter((entry) => getEntryType(entry) !== 'info')
+    .map((entry) => ({ entry, dueDate: getDueDate(entry) }))
+    .filter(({ dueDate }) => Number.isFinite(dueDate.getTime()))
+    .sort((first, second) => first.dueDate - second.dueDate)[0]?.entry
+}
+
 function entryMatchesFilter(entry, activeFilter) {
   if (activeFilter === 'alle') return true
   return normalizeStatus(entry.status) === activeFilter || getOwner(entry).key === activeFilter
@@ -364,18 +422,18 @@ function getPriority(entry) {
 }
 
 function getStripeColor(status, priority, type) {
-  if (status === 'Erledigt') return '#5cb85c'
-  if (type === 'info') return '#337ab7'
-  if (priority === 'Hohe Priorität') return '#d9534f'
-  if (priority === 'Mittlere Priorität') return '#f0ad4e'
+  if (status === 'Erledigt') return 'var(--color-success)'
+  if (type === 'info') return 'var(--color-accent)'
+  if (priority === 'Hohe Priorität') return 'var(--color-danger)'
+  if (priority === 'Mittlere Priorität') return 'var(--color-warning)'
   return statusConfig[status].border
 }
 
 function getOwnerClass(ownerKey) {
   if (ownerKey === 'techbuddy') {
-    return 'border-[#c9dced] bg-[#f3f8fc] text-[#337ab7]'
+    return 'border-[var(--color-accent-border)] bg-[var(--color-accent-soft)] text-[var(--color-accent-text)]'
   }
-  return 'border-[#d6d6d6] bg-[#f7f7f7] text-[#555555]'
+  return 'border-[var(--color-border-tertiary)] bg-[var(--color-background-secondary)] text-[var(--color-text-secondary)]'
 }
 
 function getDueDate(entry) {
@@ -411,8 +469,8 @@ function getDueState(date) {
 
 function getDueClass(state) {
   const styles = {
-    overdue: 'text-[#d9534f]',
-    today: 'text-[#8a5a12]',
+    overdue: 'text-[var(--color-danger)]',
+    today: 'text-[var(--color-warning-text)]',
     soon: 'text-[var(--color-text-secondary)]',
     future: 'text-[var(--color-text-secondary)]',
   }
@@ -426,13 +484,6 @@ function getDueText(date) {
   if (daysUntil === 1) return 'Morgen'
   if (daysUntil <= 30) return `in ${daysUntil} Tagen`
   return formatDate(toDateInputValue(date))
-}
-
-function formatCurrentTime() {
-  return new Intl.DateTimeFormat('de-DE', {
-    hour: '2-digit',
-    minute: '2-digit',
-  }).format(new Date())
 }
 
 function formatRelativeDate(date) {

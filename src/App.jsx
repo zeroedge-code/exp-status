@@ -3,6 +3,8 @@ import { StatusPage } from './statusShared.jsx'
 import {
   categories,
   createInitialStatusEntries,
+  defaultDisplaySettings,
+  normalizeDisplaySettings,
   normalizeStatusEntries,
   ownerOptions,
   priorityOptions,
@@ -28,6 +30,7 @@ const emptyStatusEntry = {
 
 const initialData = {
   statusEntries: createInitialStatusEntries(),
+  settings: defaultDisplaySettings,
   tasks: [],
 }
 
@@ -38,6 +41,7 @@ const useLocalDevStore =
 function normalizeData(rawData) {
   return {
     statusEntries: normalizeStatusEntries(rawData, initialData.statusEntries),
+    settings: normalizeDisplaySettings(rawData),
     tasks: Array.isArray(rawData?.tasks)
       ? rawData.tasks.map((task) => ({
           ...task,
@@ -155,7 +159,7 @@ function App({ adminOnly = false }) {
       {isIntern ? (
         <InternPage data={data} updateData={updateData} />
       ) : (
-        <StatusPage statusEntries={data.statusEntries} />
+        <StatusPage statusEntries={data.statusEntries} settings={data.settings} />
       )}
     </div>
   )
@@ -176,8 +180,8 @@ function SyncBanner({ syncState, syncError, adminOnly }) {
     <div
       className={`border-b px-4 py-3 text-sm ${
         syncState === 'error'
-          ? 'border-rose-200 bg-rose-50 text-rose-900'
-          : 'border-sky-200 bg-sky-50 text-sky-900'
+          ? 'border-[var(--color-danger)] bg-[var(--color-danger-soft)] text-[var(--color-danger-text)]'
+          : 'border-[var(--color-accent-border)] bg-[var(--color-accent-soft)] text-[var(--color-accent-text)]'
       }`}
     >
       <div className="mx-auto max-w-7xl">
@@ -195,22 +199,22 @@ function SyncBanner({ syncState, syncError, adminOnly }) {
 
 function TopNavigation({ path, navigate, adminOnly }) {
   return (
-    <header className="border-b border-slate-200/80 bg-white/90 backdrop-blur">
+    <header className="border-b border-[var(--color-border-tertiary)] bg-[var(--color-background-primary)]/90 backdrop-blur">
       <div className="mx-auto flex max-w-7xl flex-col gap-4 px-4 py-5 sm:flex-row sm:items-center sm:justify-between">
         <button
           type="button"
           onClick={() => navigate('/status')}
           className="text-left"
         >
-          <p className="text-xs font-bold uppercase text-teal-700">
+          <p className="text-xs font-bold uppercase text-[var(--color-accent)]">
             Experten-Portal
           </p>
-          <h1 className="mt-1 text-2xl font-semibold text-slate-950">
+          <h1 className="mt-1 text-2xl font-semibold text-[var(--color-text-primary)]">
             Dein Überblick
           </h1>
         </button>
         {!adminOnly && (
-          <nav className="inline-flex w-fit rounded-lg border border-slate-200 bg-slate-100 p-1">
+          <nav className="inline-flex w-fit rounded-[var(--border-radius-lg)] border border-[var(--color-border-tertiary)] bg-[var(--color-background-secondary)] p-1">
             <NavButton active={path !== '/intern'} onClick={() => navigate('/status')}>
               Status
             </NavButton>
@@ -231,10 +235,10 @@ function NavButton({ active, children, onClick }) {
     <button
       type="button"
       onClick={onClick}
-      className={`rounded-md px-4 py-2 text-sm font-medium transition ${
+      className={`rounded-[var(--border-radius-md)] px-4 py-2 text-sm font-medium transition ${
         active
-          ? 'bg-white text-slate-950 shadow-sm'
-          : 'text-slate-600 hover:text-slate-950'
+          ? 'bg-[var(--color-background-primary)] text-[var(--color-text-primary)] shadow-sm'
+          : 'text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]'
       }`}
     >
       {children}
@@ -251,18 +255,22 @@ function Dashboard({ data, updateData }) {
     updateData({ ...data, statusEntries })
   }
 
+  function setSettings(settings) {
+    updateData({ ...data, settings })
+  }
+
   return (
     <main>
-      <section className="border-b border-slate-200 bg-white">
+      <section className="border-b border-[var(--color-border-tertiary)] bg-[var(--color-background-primary)]">
         <div className="mx-auto max-w-7xl px-4 py-6">
           <div className="max-w-3xl">
-            <p className="mb-2 text-xs font-bold uppercase text-teal-700">
+            <p className="mb-2 text-xs font-bold uppercase text-[var(--color-accent)]">
               Geschützter Bereich
             </p>
-            <h1 className="text-2xl font-semibold text-slate-950">
+            <h1 className="text-2xl font-semibold text-[var(--color-text-primary)]">
               Internes Dashboard
             </h1>
-            <p className="mt-2 text-sm leading-6 text-slate-600">
+            <p className="mt-2 text-sm leading-6 text-[var(--color-text-secondary)]">
               Pflege die Themen, die im Experten-Dashboard sichtbar sind.
             </p>
           </div>
@@ -273,13 +281,15 @@ function Dashboard({ data, updateData }) {
         <StatusManager
           statusEntries={data.statusEntries}
           setStatusEntries={setStatusEntries}
+          settings={data.settings}
+          setSettings={setSettings}
         />
       </div>
     </main>
   )
 }
 
-function StatusManager({ statusEntries, setStatusEntries }) {
+function StatusManager({ statusEntries, setStatusEntries, settings, setSettings }) {
   const [draft, setDraft] = useState(emptyStatusEntry)
   const [editingId, setEditingId] = useState(null)
   const [confirmDeleteId, setConfirmDeleteId] = useState(null)
@@ -328,13 +338,14 @@ function StatusManager({ statusEntries, setStatusEntries }) {
   }
 
   return (
-    <section className="rounded-lg border border-slate-200 bg-white p-5">
-      <div className="border-b border-slate-200 pb-3">
-        <h2 className="text-xl font-semibold text-slate-950">Experteneinträge</h2>
-        <p className="mt-1 text-sm text-slate-500">
+    <section className="rounded-[var(--border-radius-lg)] border border-[var(--color-border-tertiary)] bg-[var(--color-background-primary)] p-5">
+      <div className="border-b border-[var(--color-border-tertiary)] pb-3">
+        <h2 className="text-xl font-semibold text-[var(--color-text-primary)]">Experteneinträge</h2>
+        <p className="mt-1 text-sm text-[var(--color-text-secondary)]">
           Inhalte, die in der öffentlichen Statusansicht erscheinen.
         </p>
       </div>
+      <DisplaySettingsPanel settings={settings} setSettings={setSettings} />
       <EntryForm
         draft={draft}
         setDraft={setDraft}
@@ -346,12 +357,11 @@ function StatusManager({ statusEntries, setStatusEntries }) {
           setConfirmDeleteId(null)
         }}
       />
-      <div className="mt-6 space-y-3">
+      <div className="mt-6 grid gap-2">
         {statusEntries.map((entry) => (
           <ManageRow
             key={entry.id}
-            title={entry.title}
-            meta={`${entry.category} · ${entry.status} · ${entry.owner} · ${formatType(entry.type)}`}
+            entry={entry}
             onEdit={() => editEntry(entry)}
             onRequestDelete={() => setConfirmDeleteId(entry.id)}
             onConfirmDelete={() => deleteEntry(entry.id)}
@@ -359,6 +369,90 @@ function StatusManager({ statusEntries, setStatusEntries }) {
             confirmingDelete={confirmDeleteId === entry.id}
           />
         ))}
+      </div>
+    </section>
+  )
+}
+
+const displaySettingOptions = [
+  {
+    key: 'showHeaderSummary',
+    label: 'Header-Zusammenfassung',
+    description: 'Zeigt oben die Anzahl offener Einträge.',
+  },
+  {
+    key: 'showNextDue',
+    label: 'Nächste Frist',
+    description: 'Ergänzt die nächste Fälligkeit im Header.',
+    dependsOn: 'showHeaderSummary',
+  },
+  {
+    key: 'showStats',
+    label: 'Status-Kacheln',
+    description: 'Zeigt die Zähler für Offen, Neu und Erledigt.',
+  },
+  {
+    key: 'showFilters',
+    label: 'Filterleiste',
+    description: 'Erlaubt Filtern nach Status und Verantwortung.',
+  },
+  {
+    key: 'showCategories',
+    label: 'Kategorie-Überschriften',
+    description: 'Gruppiert Einträge mit Icons und Zählern.',
+  },
+  {
+    key: 'showProgress',
+    label: 'Fortschrittsbalken',
+    description: 'Zeigt Prozessfortschritt auf Prozesskarten.',
+  },
+]
+
+function DisplaySettingsPanel({ settings, setSettings }) {
+  function updateSetting(key, checked) {
+    setSettings({
+      ...settings,
+      [key]: checked,
+      ...(key === 'showHeaderSummary' && !checked ? { showNextDue: false } : {}),
+    })
+  }
+
+  return (
+    <section className="mt-5 rounded-[var(--border-radius-lg)] border border-[var(--color-border-tertiary)] bg-[var(--color-background-secondary)] p-4">
+      <div className="mb-3">
+        <h3 className="text-sm font-semibold text-[var(--color-text-primary)]">Anzeigeoptionen</h3>
+        <p className="mt-1 text-sm text-[var(--color-text-secondary)]">
+          Steuert, welche Elemente in der öffentlichen Statusansicht sichtbar sind.
+        </p>
+      </div>
+      <div className="grid gap-2 sm:grid-cols-2">
+        {displaySettingOptions.map((option) => {
+          const disabled = option.dependsOn && !settings[option.dependsOn]
+          return (
+            <label
+              key={option.key}
+              className={`flex items-start gap-3 rounded-[var(--border-radius-md)] border border-[var(--color-border-tertiary)] bg-[var(--color-background-primary)] p-3 ${
+                disabled ? 'opacity-55' : ''
+              }`}
+            >
+              <input
+                type="checkbox"
+                checked={Boolean(settings[option.key])}
+                disabled={disabled}
+                onChange={(event) => updateSetting(option.key, event.target.checked)}
+                className="mt-1 h-4 w-4 accent-[var(--color-accent)]"
+              />
+              <span>
+                <span className="block text-sm font-semibold text-[var(--color-text-primary)]">
+                  {option.label}
+                </span>
+                <span className="mt-0.5 block text-xs leading-5 text-[var(--color-text-secondary)]">
+                  {option.description}
+                </span>
+              </span>
+            </label>
+          )
+        })}
       </div>
     </section>
   )
@@ -489,8 +583,8 @@ function EntryForm({ draft, setDraft, onSubmit, editing, onCancel }) {
 
 function FormSection({ title, children }) {
   return (
-    <fieldset className="rounded-lg border border-slate-200 bg-slate-50/60 p-4">
-      <legend className="px-1 text-xs font-bold uppercase tracking-wide text-slate-500">
+    <fieldset className="rounded-[var(--border-radius-lg)] border border-[var(--color-border-tertiary)] bg-[var(--color-background-secondary)] p-4">
+      <legend className="px-1 text-xs font-bold uppercase tracking-wide text-[var(--color-text-secondary)]">
         {title}
       </legend>
       <div className="mt-2 grid gap-4">{children}</div>
@@ -499,7 +593,7 @@ function FormSection({ title, children }) {
 }
 
 const inputClass =
-  'mt-2 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-950 outline-none transition focus:border-teal-700 focus:ring-2 focus:ring-teal-100'
+  'mt-2 w-full rounded-[var(--border-radius-md)] border border-[var(--color-border-tertiary)] bg-[var(--color-background-primary)] px-3 py-2 text-sm text-[var(--color-text-primary)] outline-none transition focus:border-[var(--color-accent)] focus:ring-2 focus:ring-[var(--color-focus)]'
 
 function formatType(type) {
   const labels = {
@@ -512,7 +606,7 @@ function formatType(type) {
 
 function Field({ label, children }) {
   return (
-    <label className="block text-sm font-medium text-slate-700">
+    <label className="block text-sm font-medium text-[var(--color-text-secondary)]">
       {label}
       {children}
     </label>
@@ -524,7 +618,7 @@ function FormActions({ editing, onCancel }) {
     <div className="flex flex-wrap gap-2">
       <button
         type="submit"
-        className="rounded-md bg-teal-900 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-teal-800"
+        className="rounded-[var(--border-radius-md)] bg-[var(--color-accent)] px-4 py-2 text-sm font-semibold text-white shadow-sm hover:brightness-95"
       >
         {editing ? 'Änderungen speichern' : 'Anlegen'}
       </button>
@@ -532,7 +626,7 @@ function FormActions({ editing, onCancel }) {
         <button
           type="button"
           onClick={onCancel}
-          className="rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-800 shadow-sm hover:bg-slate-50"
+          className="rounded-[var(--border-radius-md)] border border-[var(--color-border-tertiary)] bg-[var(--color-background-primary)] px-4 py-2 text-sm font-semibold text-[var(--color-text-primary)] shadow-sm hover:bg-[var(--color-background-secondary)]"
         >
           Abbrechen
         </button>
@@ -542,8 +636,7 @@ function FormActions({ editing, onCancel }) {
 }
 
 function ManageRow({
-  title,
-  meta,
+  entry,
   onEdit,
   onRequestDelete,
   onConfirmDelete,
@@ -551,12 +644,19 @@ function ManageRow({
   confirmingDelete,
 }) {
   return (
-    <article className="flex flex-col gap-3 rounded-lg border border-slate-200 bg-slate-50/80 p-4 sm:flex-row sm:items-center sm:justify-between">
-      <div>
-        <h4 className="font-semibold text-slate-950">{title}</h4>
-        <p className="mt-1 text-sm text-slate-500">{meta}</p>
+    <article className="flex flex-col gap-3 rounded-[var(--border-radius-md)] border border-[var(--color-border-tertiary)] bg-[var(--color-background-secondary)] px-3 py-2.5 sm:flex-row sm:items-center sm:justify-between">
+      <div className="min-w-0">
+        <h4 className="truncate font-semibold text-[var(--color-text-primary)]">{entry.title}</h4>
+        <div className="mt-1.5 flex flex-wrap gap-1.5">
+          <AdminChip>{entry.category}</AdminChip>
+          <AdminChip tone={entry.status === 'Erledigt' ? 'success' : entry.status === 'Neu' ? 'accent' : 'warning'}>
+            {entry.status}
+          </AdminChip>
+          <AdminChip>{entry.owner}</AdminChip>
+          <AdminChip>{formatType(entry.type)}</AdminChip>
+        </div>
       </div>
-      <div className="flex gap-2">
+      <div className="flex shrink-0 gap-2">
         {confirmingDelete ? (
           <DeleteConfirmActions
             onConfirm={onConfirmDelete}
@@ -567,14 +667,14 @@ function ManageRow({
             <button
               type="button"
               onClick={onEdit}
-              className="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-800 shadow-sm hover:bg-slate-100"
+              className="rounded-[var(--border-radius-md)] border border-[var(--color-border-tertiary)] bg-[var(--color-background-primary)] px-3 py-2 text-sm font-semibold text-[var(--color-text-primary)] shadow-sm hover:bg-[var(--color-background-secondary)]"
             >
               Bearbeiten
             </button>
             <button
               type="button"
               onClick={onRequestDelete}
-              className="rounded-md border border-rose-200 bg-white px-3 py-2 text-sm font-semibold text-rose-700 shadow-sm hover:bg-rose-50"
+              className="rounded-[var(--border-radius-md)] border border-[var(--color-danger)] bg-[var(--color-background-primary)] px-3 py-2 text-sm font-semibold text-[var(--color-danger-text)] shadow-sm hover:bg-[var(--color-danger-soft)]"
             >
               Löschen
             </button>
@@ -585,20 +685,35 @@ function ManageRow({
   )
 }
 
+function AdminChip({ tone = 'neutral', children }) {
+  const toneClass = {
+    accent: 'border-[var(--color-accent-border)] bg-[var(--color-accent-soft)] text-[var(--color-accent-text)]',
+    success: 'border-[var(--color-success)] bg-[var(--color-success-soft)] text-[var(--color-success-text)]',
+    warning: 'border-[var(--color-warning)] bg-[var(--color-warning-soft)] text-[var(--color-warning-text)]',
+    neutral: 'border-[var(--color-border-tertiary)] bg-[var(--color-background-primary)] text-[var(--color-text-secondary)]',
+  }
+
+  return (
+    <span className={`inline-flex items-center rounded border px-2 py-0.5 text-xs font-medium ${toneClass[tone]}`}>
+      {children}
+    </span>
+  )
+}
+
 function DeleteConfirmActions({ onConfirm, onCancel }) {
   return (
     <>
       <button
         type="button"
         onClick={onConfirm}
-        className="rounded-md bg-rose-700 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-rose-800"
+        className="rounded-[var(--border-radius-md)] bg-[var(--color-danger)] px-3 py-2 text-sm font-semibold text-white shadow-sm hover:brightness-95"
       >
         Löschen bestätigen
       </button>
       <button
         type="button"
         onClick={onCancel}
-        className="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-800 shadow-sm hover:bg-slate-100"
+        className="rounded-[var(--border-radius-md)] border border-[var(--color-border-tertiary)] bg-[var(--color-background-primary)] px-3 py-2 text-sm font-semibold text-[var(--color-text-primary)] shadow-sm hover:bg-[var(--color-background-secondary)]"
       >
         Abbrechen
       </button>

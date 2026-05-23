@@ -67,6 +67,7 @@ test('GET returns default data and seeds KV when empty', async () => {
 
   expect(response.status).toBe(200)
   expect(body.statusEntries).toHaveLength(3)
+  expect(body.settings.showNextDue).toBe(true)
   expect(body.tasks).toHaveLength(0)
   expect(store.values.has('status-data')).toBe(true)
 })
@@ -139,6 +140,8 @@ test('PUT stores normalized valid data', async () => {
   expect(body.statusEntries[0].status).toBe('Offen')
   expect(body.statusEntries[0].createdAt).toBe('2026-05-20')
   expect(stored.statusEntries[0].category).toBe('Auszahlungen & Vergütung')
+  expect(stored.settings.showHeaderSummary).toBe(true)
+  expect(stored.settings.showNextDue).toBe(true)
   expect(Object.keys(stored.statusEntries[0]).sort()).toEqual([
     'category',
     'createdAt',
@@ -162,6 +165,43 @@ test('PUT stores normalized valid data', async () => {
     'reminderInterval',
     'title',
   ])
+})
+
+test('PUT stores normalized display settings', async () => {
+  const data = validData()
+  data.settings = {
+    showHeaderSummary: true,
+    showNextDue: false,
+    showStats: false,
+    showFilters: true,
+    showCategories: false,
+    showProgress: true,
+  }
+
+  const response = await onRequestPut({
+    request: jsonRequest(data),
+    env: { APP_TARGET: 'admin', STATUS_STORE: createStore() },
+  })
+  const body = await response.json()
+
+  expect(response.status).toBe(200)
+  expect(body.settings).toEqual(data.settings)
+})
+
+test('PUT rejects invalid display settings', async () => {
+  const data = validData()
+  data.settings = {
+    showNextDue: 'no',
+  }
+
+  const response = await onRequestPut({
+    request: jsonRequest(data),
+    env: { APP_TARGET: 'admin', STATUS_STORE: createStore() },
+  })
+  const body = await response.json()
+
+  expect(response.status).toBe(400)
+  expect(body.details).toContain('settings.showNextDue must be a boolean.')
 })
 
 test('PUT accepts legacy status entries without createdAt', async () => {

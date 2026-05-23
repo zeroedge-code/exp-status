@@ -1,6 +1,7 @@
 import {
   render,
   screen,
+  waitFor,
   within,
 } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -88,9 +89,25 @@ test('creates a status entry from the intern dashboard form', async () => {
   expect(
     screen.getByRole('heading', { name: 'Neue Experteninfo' }),
   ).toBeInTheDocument()
-  expect(
-    screen.getByText('Marketing & Sichtbarkeit · Dringend · Operator · Aufgabe'),
-  ).toBeInTheDocument()
+  const newEntryRow = screen.getByRole('heading', { name: 'Neue Experteninfo' }).closest('article')
+  expect(within(newEntryRow).getByText('Marketing & Sichtbarkeit')).toBeInTheDocument()
+  expect(within(newEntryRow).getByText('Dringend')).toBeInTheDocument()
+  expect(within(newEntryRow).getByText('Operator')).toBeInTheDocument()
+  expect(within(newEntryRow).getByText('Aufgabe')).toBeInTheDocument()
+})
+
+test('saves public display settings from the intern dashboard', async () => {
+  const user = userEvent.setup()
+
+  await renderLoadedAdmin()
+
+  await user.click(screen.getByLabelText(/Nächste Frist/))
+
+  await waitFor(() => {
+    const saveCall = globalThis.fetch.mock.calls.find(([, options = {}]) => options.method === 'PUT')
+    expect(saveCall).toBeTruthy()
+    expect(JSON.parse(saveCall[1].body).settings.showNextDue).toBe(false)
+  })
 })
 
 test('edits an existing status entry from its dashboard row', async () => {
@@ -115,9 +132,11 @@ test('edits an existing status entry from its dashboard row', async () => {
     screen.getByRole('heading', { name: 'Zahlungsunterlagen geprüft' }),
   ).toBeInTheDocument()
   expect(screen.queryByRole('heading', { name: 'API Zahlungsunterlagen' })).not.toBeInTheDocument()
-  expect(
-    screen.getByText('Auszahlungen & Vergütung · Erledigt · Operator · Info'),
-  ).toBeInTheDocument()
+  const editedEntryRow = screen.getByRole('heading', { name: 'Zahlungsunterlagen geprüft' }).closest('article')
+  expect(within(editedEntryRow).getByText('Auszahlungen & Vergütung')).toBeInTheDocument()
+  expect(within(editedEntryRow).getByText('Erledigt')).toBeInTheDocument()
+  expect(within(editedEntryRow).getByText('Operator')).toBeInTheDocument()
+  expect(within(editedEntryRow).getByText('Info')).toBeInTheDocument()
 })
 
 test('deletes a status entry after confirmation', async () => {

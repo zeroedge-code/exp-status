@@ -1,5 +1,5 @@
 import { expect, test } from 'vitest'
-import { formatDate, normalizeStatusEntries } from './statusData.js'
+import { formatDate, normalizeDisplaySettings, normalizeStatusEntries } from './statusData.js'
 
 test('normalizeStatusEntries migrates old category names', () => {
   const entries = normalizeStatusEntries({
@@ -58,6 +58,21 @@ test('normalizeStatusEntries returns provided fallback for malformed data', () =
 
   expect(normalizeStatusEntries({}, fallback)).toBe(fallback)
   expect(normalizeStatusEntries({ statusEntries: null }, fallback)).toBe(fallback)
+})
+
+test('normalizeDisplaySettings merges stored display settings with defaults', () => {
+  const settings = normalizeDisplaySettings({
+    settings: {
+      showNextDue: false,
+      showStats: false,
+      showFilters: 'invalid',
+    },
+  })
+
+  expect(settings.showNextDue).toBe(false)
+  expect(settings.showStats).toBe(false)
+  expect(settings.showFilters).toBe(true)
+  expect(settings.showCategories).toBe(true)
 })
 
 test('formatDate formats German dates and handles empty values', () => {

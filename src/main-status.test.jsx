@@ -10,6 +10,9 @@ test('shows status entries loaded from the API', async () => {
   vi.spyOn(globalThis, 'fetch').mockResolvedValue({
     ok: true,
     json: async () => ({
+      settings: {
+        showNextDue: false,
+      },
       statusEntries: [
         {
           id: 'api-entry',
@@ -34,7 +37,8 @@ test('shows status entries loaded from the API', async () => {
   expect(screen.getByText('Bitte final prüfen.')).toBeInTheDocument()
   expect(screen.queryByText('Hohe Priorität')).not.toBeInTheDocument()
   expect(screen.getAllByText('Offen').length).toBeGreaterThan(0)
-  expect(screen.getByText('Heute aktualisiert')).toBeInTheDocument()
+  expect(screen.getByText(/aktualisiert$/)).toBeInTheDocument()
+  expect(screen.queryByText(/nächste Frist/)).not.toBeInTheDocument()
   expect(screen.queryByText('Fortschritt')).not.toBeInTheDocument()
 })
 
