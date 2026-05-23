@@ -1,5 +1,12 @@
 const DEFAULT_FRAME_ANCESTORS = "'self' https://YOUR-PARENT-SITE.com"
 
+function getAllowedFrameAncestors(value) {
+  if (typeof value !== 'string') return DEFAULT_FRAME_ANCESTORS
+
+  const trimmed = value.trim()
+  return trimmed === '' ? DEFAULT_FRAME_ANCESTORS : trimmed
+}
+
 function parseAllowedFrameAncestors(value) {
   if (typeof value !== 'string') return []
   return value
@@ -28,10 +35,8 @@ function withFrameAncestors(contentSecurityPolicy, frameAncestors) {
 export async function onRequest({ env, next }) {
   const response = await next()
   const frameAncestors = parseAllowedFrameAncestors(
-    env.ALLOWED_FRAME_ANCESTORS ?? DEFAULT_FRAME_ANCESTORS,
+    getAllowedFrameAncestors(env.ALLOWED_FRAME_ANCESTORS),
   )
-
-  if (frameAncestors.length === 0) return response
 
   const headers = new Headers(response.headers)
   headers.delete('X-Frame-Options')
@@ -48,6 +53,7 @@ export async function onRequest({ env, next }) {
 }
 
 export const testExports = {
+  getAllowedFrameAncestors,
   parseAllowedFrameAncestors,
   withFrameAncestors,
 }

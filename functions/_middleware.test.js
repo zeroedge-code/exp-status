@@ -1,7 +1,8 @@
 import { expect, test } from 'vitest'
 import { onRequest, testExports } from './_middleware.js'
 
-const { parseAllowedFrameAncestors, withFrameAncestors } = testExports
+const { getAllowedFrameAncestors, parseAllowedFrameAncestors, withFrameAncestors } =
+  testExports
 
 test('parseAllowedFrameAncestors accepts comma and space separated origins', () => {
   expect(
@@ -13,6 +14,10 @@ test('parseAllowedFrameAncestors accepts comma and space separated origins', () 
     'https://backoffice.example.com',
     'https://ops.example.com',
   ])
+})
+
+test('getAllowedFrameAncestors falls back to the default when blank', () => {
+  expect(getAllowedFrameAncestors('')).toBe("'self' https://YOUR-PARENT-SITE.com")
 })
 
 test('withFrameAncestors replaces an existing frame-ancestors directive', () => {
@@ -61,7 +66,7 @@ test('middleware uses the configured frame ancestor by default', async () => {
   expect(await response.text()).toBe('ok')
 })
 
-test('middleware can be disabled with an empty frame ancestors configuration', async () => {
+test('middleware falls back to the default frame ancestors when the env var is blank', async () => {
   const original = new Response('ok', {
     headers: { 'X-Frame-Options': 'DENY' },
   })
@@ -70,5 +75,9 @@ test('middleware can be disabled with an empty frame ancestors configuration', a
     next: async () => original,
   })
 
-  expect(response).toBe(original)
+  expect(response.headers.get('Content-Security-Policy')).toBe(
+    "frame-ancestors 'self' https://YOUR-PARENT-SITE.com",
+  )
+  expect(response.headers.get('X-Frame-Options')).toBeNull()
+  expect(await response.text()).toBe('ok')
 })
