@@ -23,15 +23,20 @@ Cloudflare Access should protect `exp-status` for experts and admin users, and `
 
 ## Iframe Embedding
 
-To embed the status app in a Rails ActiveAdmin page, set this Cloudflare Pages
-environment variable on the app that should be embedded:
+The Cloudflare Pages Function sends this HTTP header by default so the status
+app can be embedded by smartoder.com:
 
-- `ALLOWED_FRAME_ANCESTORS='self' https://admin.example.com`
+- `Content-Security-Policy: frame-ancestors 'self' https://smartoder.com`
 
-Replace `https://admin.example.com` with the exact Rails ActiveAdmin origin.
-Multiple origins can be separated by spaces or commas. The app will send a
-`Content-Security-Policy` header with `frame-ancestors` and remove
-`X-Frame-Options` for those responses.
+It also removes `X-Frame-Options` from those responses, because `DENY` or
+`SAMEORIGIN` would block the iframe even when CSP allows it.
+
+To override the default, set this Cloudflare Pages environment variable on the
+app that should be embedded:
+
+- `ALLOWED_FRAME_ANCESTORS='self' https://smartoder.com`
+
+Multiple origins can be separated by spaces or commas.
 
 The Rails app may also need to allow this app URL in its own CSP, typically via
 `frame-src` or `child-src`.

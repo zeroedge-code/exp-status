@@ -1,3 +1,5 @@
+const DEFAULT_FRAME_ANCESTORS = "'self' https://smartoder.com"
+
 function parseAllowedFrameAncestors(value) {
   if (typeof value !== 'string') return []
   return value
@@ -25,7 +27,9 @@ function withFrameAncestors(contentSecurityPolicy, frameAncestors) {
 
 export async function onRequest({ env, next }) {
   const response = await next()
-  const frameAncestors = parseAllowedFrameAncestors(env.ALLOWED_FRAME_ANCESTORS)
+  const frameAncestors = parseAllowedFrameAncestors(
+    env.ALLOWED_FRAME_ANCESTORS ?? DEFAULT_FRAME_ANCESTORS,
+  )
 
   if (frameAncestors.length === 0) return response
 

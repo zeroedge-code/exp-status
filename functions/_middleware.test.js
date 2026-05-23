@@ -19,14 +19,14 @@ test('withFrameAncestors replaces an existing frame-ancestors directive', () => 
   expect(
     withFrameAncestors(
       "default-src 'self'; frame-ancestors 'none'; script-src 'self'",
-      ["'self'", 'https://admin.example.com'],
+      ["'self'", 'https://smartoder.com'],
     ),
-  ).toBe("default-src 'self'; script-src 'self'; frame-ancestors 'self' https://admin.example.com")
+  ).toBe("default-src 'self'; script-src 'self'; frame-ancestors 'self' https://smartoder.com")
 })
 
 test('middleware adds CSP frame-ancestors and removes X-Frame-Options when configured', async () => {
   const response = await onRequest({
-    env: { ALLOWED_FRAME_ANCESTORS: "'self' https://admin.example.com" },
+    env: { ALLOWED_FRAME_ANCESTORS: "'self' https://smartoder.com" },
     next: async () =>
       new Response('ok', {
         headers: {
@@ -37,18 +37,34 @@ test('middleware adds CSP frame-ancestors and removes X-Frame-Options when confi
   })
 
   expect(response.headers.get('Content-Security-Policy')).toBe(
-    "frame-ancestors 'self' https://admin.example.com",
+    "frame-ancestors 'self' https://smartoder.com",
   )
   expect(response.headers.get('X-Frame-Options')).toBeNull()
   expect(await response.text()).toBe('ok')
 })
 
-test('middleware leaves responses untouched when no frame ancestors are configured', async () => {
+test('middleware uses the smartoder.com frame ancestor by default', async () => {
+  const response = await onRequest({
+    env: {},
+    next: async () =>
+      new Response('ok', {
+        headers: { 'X-Frame-Options': 'DENY' },
+      }),
+  })
+
+  expect(response.headers.get('Content-Security-Policy')).toBe(
+    "frame-ancestors 'self' https://smartoder.com",
+  )
+  expect(response.headers.get('X-Frame-Options')).toBeNull()
+  expect(await response.text()).toBe('ok')
+})
+
+test('middleware can be disabled with an empty frame ancestors configuration', async () => {
   const original = new Response('ok', {
     headers: { 'X-Frame-Options': 'DENY' },
   })
   const response = await onRequest({
-    env: {},
+    env: { ALLOWED_FRAME_ANCESTORS: '' },
     next: async () => original,
   })
 
