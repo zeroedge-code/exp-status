@@ -187,3 +187,11 @@ test('restores the previous status entry when saving an edit fails', async () =>
     screen.queryByRole('heading', { name: 'Nicht gespeicherter Titel' }),
   ).not.toBeInTheDocument()
 })
+
+test('hides the portal header in the admin view', async () => {
+  render(<App adminOnly />)
+
+  await screen.findByRole('heading', { name: 'Internes Dashboard' })
+  expect(screen.queryByText('Experten-Portal')).not.toBeInTheDocument()
+  expect(screen.queryByText('Dein Überblick')).not.toBeInTheDocument()
+})

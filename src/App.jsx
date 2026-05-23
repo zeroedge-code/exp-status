@@ -198,6 +198,8 @@ function SyncBanner({ syncState, syncError, adminOnly }) {
 }
 
 function TopNavigation({ path, navigate, adminOnly }) {
+  if (adminOnly) return null
+
   return (
     <header className="border-b border-[var(--color-border-tertiary)] bg-[var(--color-background-primary)]/90 backdrop-blur">
       <div className="mx-auto flex max-w-7xl flex-col gap-4 px-4 py-5 sm:flex-row sm:items-center sm:justify-between">
@@ -213,18 +215,16 @@ function TopNavigation({ path, navigate, adminOnly }) {
             Dein Überblick
           </h1>
         </button>
-        {!adminOnly && (
-          <nav className="inline-flex w-fit rounded-[var(--border-radius-lg)] border border-[var(--color-border-tertiary)] bg-[var(--color-background-secondary)] p-1">
-            <NavButton active={path !== '/intern'} onClick={() => navigate('/status')}>
-              Status
+        <nav className="inline-flex w-fit rounded-[var(--border-radius-lg)] border border-[var(--color-border-tertiary)] bg-[var(--color-background-secondary)] p-1">
+          <NavButton active={path !== '/intern'} onClick={() => navigate('/status')}>
+            Status
+          </NavButton>
+          {path === '/intern' && (
+            <NavButton active onClick={() => navigate('/intern')}>
+              Intern
             </NavButton>
-            {path === '/intern' && (
-              <NavButton active onClick={() => navigate('/intern')}>
-                Intern
-              </NavButton>
-            )}
-          </nav>
-        )}
+          )}
+        </nav>
       </div>
     </header>
   )
