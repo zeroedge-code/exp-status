@@ -1,4 +1,20 @@
 const DEFAULT_FRAME_ANCESTORS = "'self' https://smartoder.com"
+const CANONICAL_HOSTS = {
+  'exp-status.pages.dev': 'expertiger.zeroedge.tech',
+  'exp-status-admin.pages.dev': 'admin.zeroedge.tech',
+}
+
+function getCanonicalRedirectUrl(request) {
+  if (!request?.url) return null
+
+  const url = new URL(request.url)
+  const canonicalHost = CANONICAL_HOSTS[url.hostname]
+  if (!canonicalHost) return null
+
+  url.protocol = 'https:'
+  url.hostname = canonicalHost
+  return url.toString()
+}
 
 function getAllowedFrameAncestors(value) {
   if (typeof value !== 'string') return DEFAULT_FRAME_ANCESTORS
@@ -32,7 +48,18 @@ function withFrameAncestors(contentSecurityPolicy, frameAncestors) {
   return nextDirectives.join('; ')
 }
 
-export async function onRequest({ env, next }) {
+export async function onRequest({ request, env, next }) {
+  const canonicalUrl = getCanonicalRedirectUrl(request)
+  if (canonicalUrl) {
+    return new Response(null, {
+      status: 308,
+      headers: {
+        Location: canonicalUrl,
+        'Cache-Control': 'no-store',
+      },
+    })
+  }
+
   const response = await next()
   const frameAncestors = parseAllowedFrameAncestors(
     getAllowedFrameAncestors(env.ALLOWED_FRAME_ANCESTORS),
@@ -53,6 +80,7 @@ export async function onRequest({ env, next }) {
 }
 
 export const testExports = {
+  getCanonicalRedirectUrl,
   getAllowedFrameAncestors,
   parseAllowedFrameAncestors,
   withFrameAncestors,

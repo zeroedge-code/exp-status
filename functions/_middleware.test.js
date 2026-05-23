@@ -1,8 +1,35 @@
 import { expect, test } from 'vitest'
 import { onRequest, testExports } from './_middleware.js'
 
-const { getAllowedFrameAncestors, parseAllowedFrameAncestors, withFrameAncestors } =
+const {
+  getAllowedFrameAncestors,
+  getCanonicalRedirectUrl,
+  parseAllowedFrameAncestors,
+  withFrameAncestors,
+} =
   testExports
+
+test('getCanonicalRedirectUrl maps the status pages.dev host to the custom domain', () => {
+  expect(
+    getCanonicalRedirectUrl(
+      new Request('https://exp-status.pages.dev/status?embedded=1'),
+    ),
+  ).toBe('https://expertiger.zeroedge.tech/status?embedded=1')
+})
+
+test('getCanonicalRedirectUrl maps the admin pages.dev host to the custom domain', () => {
+  expect(
+    getCanonicalRedirectUrl(
+      new Request('https://exp-status-admin.pages.dev/intern?embedded=1'),
+    ),
+  ).toBe('https://admin.zeroedge.tech/intern?embedded=1')
+})
+
+test('getCanonicalRedirectUrl leaves custom domains unchanged', () => {
+  expect(
+    getCanonicalRedirectUrl(new Request('https://expertiger.zeroedge.tech/status')),
+  ).toBeNull()
+})
 
 test('parseAllowedFrameAncestors accepts comma and space separated origins', () => {
   expect(
@@ -33,6 +60,7 @@ test('withFrameAncestors replaces an existing frame-ancestors directive', () => 
 
 test('middleware adds CSP frame-ancestors and removes X-Frame-Options when configured', async () => {
   const response = await onRequest({
+    request: new Request('https://expertiger.zeroedge.tech/status'),
     env: { ALLOWED_FRAME_ANCESTORS: "'self' https://smartoder.com" },
     next: async () =>
       new Response('ok', {
@@ -52,6 +80,7 @@ test('middleware adds CSP frame-ancestors and removes X-Frame-Options when confi
 
 test('middleware uses the configured frame ancestor by default', async () => {
   const response = await onRequest({
+    request: new Request('https://expertiger.zeroedge.tech/status'),
     env: {},
     next: async () =>
       new Response('ok', {
@@ -71,6 +100,7 @@ test('middleware falls back to the default frame ancestors when the env var is b
     headers: { 'X-Frame-Options': 'DENY' },
   })
   const response = await onRequest({
+    request: new Request('https://expertiger.zeroedge.tech/status'),
     env: { ALLOWED_FRAME_ANCESTORS: '' },
     next: async () => original,
   })
@@ -80,4 +110,17 @@ test('middleware falls back to the default frame ancestors when the env var is b
   )
   expect(response.headers.get('X-Frame-Options')).toBeNull()
   expect(await response.text()).toBe('ok')
+})
+
+test('middleware redirects pages.dev requests before serving the app', async () => {
+  const response = await onRequest({
+    request: new Request('https://exp-status.pages.dev/status'),
+    env: {},
+    next: async () => new Response('should not run'),
+  })
+
+  expect(response.status).toBe(308)
+  expect(response.headers.get('Location')).toBe('https://expertiger.zeroedge.tech/status')
+  expect(response.headers.get('Cache-Control')).toBe('no-store')
+  expect(await response.text()).toBe('')
 })
