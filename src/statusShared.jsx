@@ -107,11 +107,13 @@ export function StatusPage({
               </div>
             </div>
 
-            <StatusPill
-              lastUpdated={latestUpdate}
-              isLoading={loading}
-              showAge={displaySettings.showLiveAge}
-            />
+            {displaySettings.showLiveStatusPill && (
+              <StatusPill
+                lastUpdated={latestUpdate}
+                isLoading={loading}
+                showAge={displaySettings.showLiveAge}
+              />
+            )}
           </div>
 
           {displaySettings.showHeaderSummary && (

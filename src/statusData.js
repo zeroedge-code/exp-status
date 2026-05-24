@@ -26,6 +26,7 @@ export const defaultDisplaySettings = {
   showFilters: true,
   showCategories: true,
   showProgress: true,
+  showLiveStatusPill: true,
   showLiveAge: false,
 }
 

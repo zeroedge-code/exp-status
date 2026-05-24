@@ -362,6 +362,7 @@ const displaySettingOptions = [
   ['showFilters', 'Filterleiste'],
   ['showCategories', 'Kategorie-Überschriften'],
   ['showProgress', 'Fortschrittsbalken'],
+  ['showLiveStatusPill', 'Aktuell-Pill anzeigen'],
   ['showLiveAge', 'Live-Alter anzeigen'],
 ]
 
@@ -371,6 +372,7 @@ function DisplaySettingsPanel({ settings, setSettings }) {
       ...settings,
       [key]: checked,
       ...(key === 'showHeaderSummary' && !checked ? { showNextDue: false } : {}),
+      ...(key === 'showLiveStatusPill' && !checked ? { showLiveAge: false } : {}),
     })
   }
 
@@ -386,7 +388,9 @@ function DisplaySettingsPanel({ settings, setSettings }) {
       </div>
       <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
         {displaySettingOptions.map(([key, label]) => {
-          const disabled = key === 'showNextDue' && !settings.showHeaderSummary
+          const disabled =
+            (key === 'showNextDue' && !settings.showHeaderSummary) ||
+            (key === 'showLiveAge' && !settings.showLiveStatusPill)
           return (
             <label
               key={key}
