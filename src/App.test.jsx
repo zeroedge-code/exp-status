@@ -75,25 +75,37 @@ test('creates a status entry from the intern dashboard form', async () => {
 
   await renderLoadedAdmin()
 
-  await user.selectOptions(screen.getByLabelText('Kategorie'), 'Marketing & Sichtbarkeit')
-  await user.selectOptions(screen.getByLabelText('Status'), 'Dringend')
-  await user.selectOptions(screen.getByLabelText('Typ'), 'task')
-  await user.type(screen.getByLabelText('Titel'), 'Neue Experteninfo')
-  await user.clear(screen.getByLabelText('Datum letzter Stand'))
-  await user.type(screen.getByLabelText('Datum letzter Stand'), '2026-05-22')
-  await user.clear(screen.getByLabelText('Fälligkeitsdatum'))
-  await user.type(screen.getByLabelText('Fälligkeitsdatum'), '2026-05-24')
-  await user.type(screen.getByLabelText('Beschreibung'), 'Bitte heute freigeben.')
-  await user.click(screen.getByRole('button', { name: 'Anlegen' }))
+  const addButtons = screen.getAllByRole('button', { name: '+ Experte hinzufügen' })
+  await user.click(addButtons.at(-1))
+
+  const newEntryHeading = await screen.findByRole('heading', { name: 'Neuer Eintrag' })
+  const newEntryRow = newEntryHeading.closest('article')
+
+  await user.selectOptions(within(newEntryRow).getByLabelText('Kategorie'), 'Marketing & Sichtbarkeit')
+  await user.selectOptions(within(newEntryRow).getByLabelText('Status'), 'Dringend')
+  await user.selectOptions(within(newEntryRow).getByLabelText('Typ'), 'task')
+  await user.type(within(newEntryRow).getByLabelText('Titel'), 'Neue Experteninfo')
+  await user.clear(within(newEntryRow).getByLabelText('Fällig'))
+  await user.type(within(newEntryRow).getByLabelText('Fällig'), '2026-05-24')
+  await user.type(within(newEntryRow).getByLabelText('Hinweis'), 'Bitte heute freigeben.')
+  await user.click(within(newEntryRow).getByRole('button', { name: 'Speichern' }))
 
   expect(
     screen.getByRole('heading', { name: 'Neue Experteninfo' }),
   ).toBeInTheDocument()
-  const newEntryRow = screen.getByRole('heading', { name: 'Neue Experteninfo' }).closest('article')
-  expect(within(newEntryRow).getByText('Marketing & Sichtbarkeit')).toBeInTheDocument()
-  expect(within(newEntryRow).getByText('Dringend')).toBeInTheDocument()
-  expect(within(newEntryRow).getByText('Operator')).toBeInTheDocument()
-  expect(within(newEntryRow).getByText('Aufgabe')).toBeInTheDocument()
+
+  await waitFor(() => {
+    const saveCall = globalThis.fetch.mock.calls.find(([, options = {}]) => options.method === 'PUT')
+    expect(saveCall).toBeTruthy()
+    expect(JSON.parse(saveCall[1].body).statusEntries[0]).toMatchObject({
+      title: 'Neue Experteninfo',
+      category: 'Marketing & Sichtbarkeit',
+      status: 'Dringend',
+      type: 'task',
+      description: 'Bitte heute freigeben.',
+      dueDate: '2026-05-24',
+    })
+  })
 })
 
 test('saves public display settings from the intern dashboard', async () => {
@@ -120,23 +132,25 @@ test('edits an existing status entry from its dashboard row', async () => {
   })
   const entryRow = entryHeading.closest('article')
 
-  await user.click(within(entryRow).getByRole('button', { name: 'Bearbeiten' }))
-  await user.clear(screen.getByLabelText('Titel'))
-  await user.type(screen.getByLabelText('Titel'), 'Zahlungsunterlagen geprüft')
-  await user.selectOptions(screen.getByLabelText('Status'), 'Erledigt')
+  await user.clear(within(entryRow).getByLabelText('Titel'))
+  await user.type(within(entryRow).getByLabelText('Titel'), 'Zahlungsunterlagen geprüft')
+  await user.selectOptions(within(entryRow).getByLabelText('Status'), 'Erledigt')
   await user.click(
-    await screen.findByRole('button', { name: 'Änderungen speichern' }),
+    within(entryRow).getByRole('button', { name: 'Speichern' }),
   )
 
   expect(
     screen.getByRole('heading', { name: 'Zahlungsunterlagen geprüft' }),
   ).toBeInTheDocument()
   expect(screen.queryByRole('heading', { name: 'API Zahlungsunterlagen' })).not.toBeInTheDocument()
-  const editedEntryRow = screen.getByRole('heading', { name: 'Zahlungsunterlagen geprüft' }).closest('article')
-  expect(within(editedEntryRow).getByText('Auszahlungen & Vergütung')).toBeInTheDocument()
-  expect(within(editedEntryRow).getByText('Erledigt')).toBeInTheDocument()
-  expect(within(editedEntryRow).getByText('Operator')).toBeInTheDocument()
-  expect(within(editedEntryRow).getByText('Info')).toBeInTheDocument()
+  await waitFor(() => {
+    const saveCall = globalThis.fetch.mock.calls.find(([, options = {}]) => options.method === 'PUT')
+    expect(saveCall).toBeTruthy()
+    expect(JSON.parse(saveCall[1].body).statusEntries[0]).toMatchObject({
+      title: 'Zahlungsunterlagen geprüft',
+      status: 'Erledigt',
+    })
+  })
 })
 
 test('deletes a status entry after confirmation', async () => {
@@ -170,16 +184,15 @@ test('restores the previous status entry when saving an edit fails', async () =>
   })
   const entryRow = entryHeading.closest('article')
 
-  await user.click(within(entryRow).getByRole('button', { name: 'Bearbeiten' }))
-  await user.clear(screen.getByLabelText('Titel'))
-  await user.type(screen.getByLabelText('Titel'), 'Nicht gespeicherter Titel')
+  await user.clear(within(entryRow).getByLabelText('Titel'))
+  await user.type(within(entryRow).getByLabelText('Titel'), 'Nicht gespeicherter Titel')
   await user.click(
-    await screen.findByRole('button', { name: 'Änderungen speichern' }),
+    within(entryRow).getByRole('button', { name: 'Speichern' }),
   )
 
   expect(
-    await screen.findByText('Statusdaten konnten nicht gespeichert werden.'),
-  ).toBeInTheDocument()
+    await screen.findAllByText('Statusdaten konnten nicht gespeichert werden.'),
+  ).toHaveLength(2)
   expect(
     screen.getByRole('heading', { name: 'API Zahlungsunterlagen' }),
   ).toBeInTheDocument()

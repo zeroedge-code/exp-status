@@ -1,25 +1,22 @@
 import { useEffect, useRef, useState } from 'react'
+import { AdminRow } from './components/AdminRow.jsx'
+import { Button } from './components/Button.jsx'
 import { StatusPage } from './statusShared.jsx'
 import {
-  categories,
   createInitialStatusEntries,
   defaultDisplaySettings,
   normalizeDisplaySettings,
   normalizeStatusEntries,
-  ownerOptions,
-  priorityOptions,
-  statusOptions,
-  typeOptions,
 } from './statusData.js'
 
 const today = new Date().toISOString().slice(0, 10)
 
 const emptyStatusEntry = {
-  category: categories[0],
+  category: 'Auszahlungen & Vergütung',
   title: '',
-  status: statusOptions[0],
-  owner: ownerOptions[0],
-  type: typeOptions[0],
+  status: 'Neu',
+  owner: 'Operator',
+  type: 'info',
   priority: '',
   showProgress: false,
   createdAt: today,
@@ -96,6 +93,10 @@ function App({ adminOnly = false }) {
   const saveRequestId = useRef(0)
 
   useEffect(() => {
+    document.title = adminOnly || path === '/intern' ? 'Expertenstatus Admin' : 'Expertenstatus'
+  }, [adminOnly, path])
+
+  useEffect(() => {
     let active = true
     fetchData()
       .then((remoteData) => {
@@ -140,11 +141,13 @@ function App({ adminOnly = false }) {
       setData(savedData)
       setSyncError('')
       setSyncState('saved')
+      return true
     } catch (error) {
       if (requestId !== saveRequestId.current) return
       setData(previousData)
       setSyncError(error.message)
       setSyncState('error')
+      return false
     }
   }
 
@@ -152,14 +155,16 @@ function App({ adminOnly = false }) {
 
   return (
     <div className="min-h-screen">
-      {isIntern && (
-        <TopNavigation path={path} navigate={navigate} adminOnly={adminOnly} />
-      )}
+      {isIntern && !adminOnly && <TopNavigation path={path} navigate={navigate} />}
       <SyncBanner syncState={syncState} syncError={syncError} adminOnly={adminOnly} />
       {isIntern ? (
-        <InternPage data={data} updateData={updateData} />
+        <AdminDashboard data={data} updateData={updateData} syncState={syncState} syncError={syncError} />
       ) : (
-        <StatusPage statusEntries={data.statusEntries} settings={data.settings} />
+        <StatusPage
+          statusEntries={data.statusEntries}
+          settings={data.settings}
+          loading={syncState === 'loading'}
+        />
       )}
     </div>
   )
@@ -169,61 +174,41 @@ function SyncBanner({ syncState, syncError, adminOnly }) {
   if (syncState === 'ready' || syncState === 'saved') return null
   if (!adminOnly && syncState !== 'error') return null
 
-  const messages = {
-    loading: 'Zentrale Statusdaten werden geladen.',
-    saving: 'Änderungen werden zentral gespeichert.',
-    error:
-      'Zentrale Speicherung ist nicht erreichbar. Bitte Cloudflare KV-Binding prüfen.',
-  }
+  const message =
+    syncState === 'error'
+      ? syncError || 'Zentrale Speicherung ist nicht erreichbar. Bitte Cloudflare KV-Binding prüfen.'
+      : syncState === 'saving'
+        ? 'Änderungen werden zentral gespeichert.'
+        : 'Zentrale Statusdaten werden geladen.'
 
   return (
     <div
       className={`border-b px-4 py-3 text-sm ${
         syncState === 'error'
-          ? 'border-[var(--color-danger)] bg-[var(--color-danger-soft)] text-[var(--color-danger-text)]'
-          : 'border-[var(--color-accent-border)] bg-[var(--color-accent-soft)] text-[var(--color-accent-text)]'
+          ? 'border-[var(--danger)] bg-[var(--color-danger-soft)] text-[var(--color-danger-text)]'
+          : 'border-[var(--accent)] bg-[var(--color-accent-soft)] text-[var(--accent-hover)]'
       }`}
     >
-      <div className="mx-auto max-w-7xl">
-        {syncState === 'error' && syncError
-          ? syncError
-          : adminOnly
-            ? messages[syncState]
-            : syncState === 'error'
-              ? messages.error
-              : null}
-      </div>
+      <div className="mx-auto max-w-7xl">{message}</div>
     </div>
   )
 }
 
-function TopNavigation({ path, navigate, adminOnly }) {
-  if (adminOnly) return null
-
+function TopNavigation({ path, navigate }) {
   return (
-    <header className="border-b border-[var(--color-border-tertiary)] bg-[var(--color-background-primary)]/90 backdrop-blur">
-      <div className="mx-auto flex max-w-7xl flex-col gap-4 px-4 py-5 sm:flex-row sm:items-center sm:justify-between">
-        <button
-          type="button"
-          onClick={() => navigate('/status')}
-          className="text-left"
-        >
-          <p className="text-xs font-bold uppercase text-[var(--color-accent)]">
-            Experten-Portal
-          </p>
-          <h1 className="mt-1 text-2xl font-semibold text-[var(--color-text-primary)]">
-            Dein Überblick
-          </h1>
+    <header className="border-b border-[var(--border)] bg-[var(--bg-surface)]/85 backdrop-blur-xl">
+      <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-4">
+        <button type="button" onClick={() => navigate('/status')} className="text-left">
+          <p className="font-display text-xs uppercase text-[var(--accent)]">Experten-Portal</p>
+          <p className="mt-1 text-lg font-semibold text-[var(--text-primary)]">Dein Überblick</p>
         </button>
-        <nav className="inline-flex w-fit rounded-[var(--border-radius-lg)] border border-[var(--color-border-tertiary)] bg-[var(--color-background-secondary)] p-1">
+        <nav className="inline-flex rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--bg-elevated)] p-1">
           <NavButton active={path !== '/intern'} onClick={() => navigate('/status')}>
             Status
           </NavButton>
-          {path === '/intern' && (
-            <NavButton active onClick={() => navigate('/intern')}>
-              Intern
-            </NavButton>
-          )}
+          <NavButton active={path === '/intern'} onClick={() => navigate('/intern')}>
+            Intern
+          </NavButton>
         </nav>
       </div>
     </header>
@@ -235,10 +220,10 @@ function NavButton({ active, children, onClick }) {
     <button
       type="button"
       onClick={onClick}
-      className={`rounded-[var(--border-radius-md)] px-4 py-2 text-sm font-medium transition ${
+      className={`rounded-[var(--radius-sm)] px-3 py-2 text-sm font-medium ${
         active
-          ? 'bg-[var(--color-background-primary)] text-[var(--color-text-primary)] shadow-sm'
-          : 'text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]'
+          ? 'bg-[var(--bg-surface)] text-[var(--text-primary)] shadow-sm'
+          : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
       }`}
     >
       {children}
@@ -246,166 +231,154 @@ function NavButton({ active, children, onClick }) {
   )
 }
 
-function InternPage({ data, updateData }) {
-  return <Dashboard data={data} updateData={updateData} />
-}
+function AdminDashboard({ data, updateData, syncError }) {
+  const [newEntry, setNewEntry] = useState(null)
+  const [rowFlash, setRowFlash] = useState({})
+  const [rowErrors, setRowErrors] = useState({})
+  const adminEmail = import.meta.env.VITE_ADMIN_EMAIL || 'admin@expertenstatus.local'
 
-function Dashboard({ data, updateData }) {
   function setStatusEntries(statusEntries) {
-    updateData({ ...data, statusEntries })
+    return updateData({ ...data, statusEntries })
   }
 
   function setSettings(settings) {
-    updateData({ ...data, settings })
+    return updateData({ ...data, settings })
+  }
+
+  async function saveEntry(nextEntry) {
+    const isNew = !data.statusEntries.some((entry) => entry.id === nextEntry.id)
+    const savedEntry = {
+      ...nextEntry,
+      id: nextEntry.id || crypto.randomUUID(),
+      createdAt: nextEntry.createdAt || today,
+      updatedAt: nextEntry.updatedAt || today,
+    }
+    const statusEntries = isNew
+      ? [savedEntry, ...data.statusEntries]
+      : data.statusEntries.map((entry) => (entry.id === savedEntry.id ? savedEntry : entry))
+
+    const saved = await setStatusEntries(statusEntries)
+    if (!saved) {
+      setRowErrors((current) => ({ ...current, [savedEntry.id]: syncError || 'Statusdaten konnten nicht gespeichert werden.' }))
+      markRow(savedEntry.id, 'error')
+      return
+    }
+    setNewEntry(null)
+    setRowErrors((current) => ({ ...current, [savedEntry.id]: '' }))
+    markRow(savedEntry.id, 'success')
+  }
+
+  async function deleteEntry(id) {
+    await setStatusEntries(data.statusEntries.filter((entry) => entry.id !== id))
+  }
+
+  function handleAddEntry() {
+    setNewEntry({ ...emptyStatusEntry, id: crypto.randomUUID(), createdAt: today, updatedAt: today })
+  }
+
+  function markRow(id, state) {
+    setRowFlash((current) => ({ ...current, [id]: state }))
+    window.setTimeout(() => {
+      setRowFlash((current) => ({ ...current, [id]: '' }))
+    }, 800)
   }
 
   return (
-    <main>
-      <section className="border-b border-[var(--color-border-tertiary)] bg-[var(--color-background-primary)]">
-        <div className="mx-auto max-w-7xl px-4 py-6">
-          <div className="max-w-3xl">
-            <p className="mb-2 text-xs font-bold uppercase text-[var(--color-accent)]">
-              Geschützter Bereich
-            </p>
-            <h1 className="text-2xl font-semibold text-[var(--color-text-primary)]">
-              Internes Dashboard
-            </h1>
-            <p className="mt-2 text-sm leading-6 text-[var(--color-text-secondary)]">
-              Pflege die Themen, die im Experten-Dashboard sichtbar sind.
-            </p>
+    <main className="min-h-screen bg-[var(--bg-base)]">
+      <div className="grid min-h-screen lg:grid-cols-[17rem_minmax(0,1fr)]">
+        <aside className="border-b border-[var(--border)] bg-[var(--bg-surface)] px-4 py-4 lg:border-b-0 lg:border-r lg:px-5 lg:py-6">
+          <div className="sticky top-6 flex flex-col gap-6">
+            <div>
+              <p className="font-display text-sm font-medium uppercase text-[var(--text-primary)]">
+                Expertenstatus
+              </p>
+              <p className="mt-2 text-sm leading-6 text-[var(--text-secondary)]">
+                Pflege Status, Verantwortung und Hinweise für die öffentliche Ansicht.
+              </p>
+            </div>
+            <nav className="flex gap-2 lg:grid">
+              <SidebarItem active>Einträge</SidebarItem>
+              <SidebarItem>Anzeige</SidebarItem>
+            </nav>
+            <Button variant="ghost" onClick={handleAddEntry} className="justify-start">
+              + Experte hinzufügen
+            </Button>
           </div>
-        </div>
-      </section>
+        </aside>
 
-      <div className="mx-auto max-w-4xl px-4 py-8">
-        <StatusManager
-          statusEntries={data.statusEntries}
-          setStatusEntries={setStatusEntries}
-          settings={data.settings}
-          setSettings={setSettings}
-        />
+        <section className="min-w-0">
+          <header className="sticky top-0 z-20 border-b border-[var(--border)] bg-[var(--bg-base)]/82 px-4 py-4 backdrop-blur-xl">
+            <div className="mx-auto flex max-w-6xl items-center justify-between gap-4">
+              <div>
+                <span className="badge bg-[var(--bg-surface)] text-[var(--accent)]">Admin</span>
+                <h1 className="mt-3 text-2xl font-semibold text-[var(--text-primary)]">
+                  Internes Dashboard
+                </h1>
+              </div>
+              <p className="hidden text-sm text-[var(--text-muted)] sm:block">{adminEmail}</p>
+            </div>
+          </header>
+
+          <div className="mx-auto grid max-w-6xl gap-6 px-4 py-6">
+            <DisplaySettingsPanel settings={data.settings} setSettings={setSettings} />
+
+            <section className="grid gap-3">
+              <div className="flex items-end justify-between gap-4">
+                <div>
+                  <h2 className="font-display text-base font-medium text-[var(--text-primary)]">
+                    Experteneinträge
+                  </h2>
+                  <p className="mt-1 text-sm text-[var(--text-secondary)]">
+                    Inline bearbeiten, speichern und bei Bedarf entfernen.
+                  </p>
+                </div>
+                <span className="label">{data.statusEntries.length} Einträge</span>
+              </div>
+
+              {newEntry && (
+                <AdminRow
+                  entry={newEntry}
+                  isNew
+                  onSave={saveEntry}
+                  onCancelNew={() => setNewEntry(null)}
+                  flash={rowFlash[newEntry.id]}
+                  error={rowErrors[newEntry.id]}
+                />
+              )}
+
+              {data.statusEntries.map((entry) => (
+                <AdminRow
+                  key={`${entry.id}:${entry.title}:${entry.updatedAt}`}
+                  entry={entry}
+                  onSave={saveEntry}
+                  onDelete={() => deleteEntry(entry.id)}
+                  flash={rowFlash[entry.id]}
+                  error={rowErrors[entry.id]}
+                />
+              ))}
+
+              <button
+                type="button"
+                onClick={handleAddEntry}
+                className="rounded-[var(--radius-md)] border border-dashed border-[var(--border)] bg-[var(--bg-surface)] px-4 py-4 text-sm font-semibold text-[var(--text-secondary)] hover:border-[var(--accent)] hover:text-[var(--accent)]"
+              >
+                + Experte hinzufügen
+              </button>
+            </section>
+          </div>
+        </section>
       </div>
     </main>
   )
 }
 
-function StatusManager({ statusEntries, setStatusEntries, settings, setSettings }) {
-  const [draft, setDraft] = useState(emptyStatusEntry)
-  const [editingId, setEditingId] = useState(null)
-  const [confirmDeleteId, setConfirmDeleteId] = useState(null)
-
-  function saveEntry(event) {
-    event.preventDefault()
-    if (!draft.title.trim()) return
-
-    if (editingId) {
-      setStatusEntries(
-        statusEntries.map((entry) =>
-          entry.id === editingId
-            ? { ...draft, id: editingId, createdAt: entry.createdAt || draft.createdAt }
-            : entry,
-        ),
-      )
-    } else {
-      setStatusEntries([
-        {
-          ...draft,
-          id: crypto.randomUUID(),
-          createdAt: new Date().toISOString().slice(0, 10),
-        },
-        ...statusEntries,
-      ])
-    }
-    setDraft({
-      ...emptyStatusEntry,
-      createdAt: new Date().toISOString().slice(0, 10),
-      updatedAt: new Date().toISOString().slice(0, 10),
-    })
-    setEditingId(null)
-    setConfirmDeleteId(null)
-  }
-
-  function editEntry(entry) {
-    setDraft(entry)
-    setEditingId(entry.id)
-    setConfirmDeleteId(null)
-  }
-
-  function deleteEntry(id) {
-    setStatusEntries(statusEntries.filter((entry) => entry.id !== id))
-    if (editingId === id) setEditingId(null)
-    setConfirmDeleteId(null)
-  }
-
-  return (
-    <section className="rounded-[var(--border-radius-lg)] border border-[var(--color-border-tertiary)] bg-[var(--color-background-primary)] p-5">
-      <div className="border-b border-[var(--color-border-tertiary)] pb-3">
-        <h2 className="text-xl font-semibold text-[var(--color-text-primary)]">Experteneinträge</h2>
-        <p className="mt-1 text-sm text-[var(--color-text-secondary)]">
-          Inhalte, die in der öffentlichen Statusansicht erscheinen.
-        </p>
-      </div>
-      <DisplaySettingsPanel settings={settings} setSettings={setSettings} />
-      <EntryForm
-        draft={draft}
-        setDraft={setDraft}
-        onSubmit={saveEntry}
-        editing={Boolean(editingId)}
-        onCancel={() => {
-          setDraft(emptyStatusEntry)
-          setEditingId(null)
-          setConfirmDeleteId(null)
-        }}
-      />
-      <div className="mt-6 grid gap-2">
-        {statusEntries.map((entry) => (
-          <ManageRow
-            key={entry.id}
-            entry={entry}
-            onEdit={() => editEntry(entry)}
-            onRequestDelete={() => setConfirmDeleteId(entry.id)}
-            onConfirmDelete={() => deleteEntry(entry.id)}
-            onCancelDelete={() => setConfirmDeleteId(null)}
-            confirmingDelete={confirmDeleteId === entry.id}
-          />
-        ))}
-      </div>
-    </section>
-  )
-}
-
 const displaySettingOptions = [
-  {
-    key: 'showHeaderSummary',
-    label: 'Header-Zusammenfassung',
-    description: 'Zeigt oben die Anzahl offener Einträge.',
-  },
-  {
-    key: 'showNextDue',
-    label: 'Nächste Frist',
-    description: 'Ergänzt die nächste Fälligkeit im Header.',
-    dependsOn: 'showHeaderSummary',
-  },
-  {
-    key: 'showStats',
-    label: 'Status-Kacheln',
-    description: 'Zeigt die Zähler für Offen, Neu und Erledigt.',
-  },
-  {
-    key: 'showFilters',
-    label: 'Filterleiste',
-    description: 'Erlaubt Filtern nach Status und Verantwortung.',
-  },
-  {
-    key: 'showCategories',
-    label: 'Kategorie-Überschriften',
-    description: 'Gruppiert Einträge mit Icons und Zählern.',
-  },
-  {
-    key: 'showProgress',
-    label: 'Fortschrittsbalken',
-    description: 'Zeigt Prozessfortschritt auf Prozesskarten.',
-  },
+  ['showHeaderSummary', 'Header-Zusammenfassung'],
+  ['showNextDue', 'Nächste Frist'],
+  ['showStats', 'Status-Kacheln'],
+  ['showFilters', 'Filterleiste'],
+  ['showCategories', 'Kategorie-Überschriften'],
+  ['showProgress', 'Fortschrittsbalken'],
 ]
 
 function DisplaySettingsPanel({ settings, setSettings }) {
@@ -418,38 +391,33 @@ function DisplaySettingsPanel({ settings, setSettings }) {
   }
 
   return (
-    <section className="mt-5 rounded-[var(--border-radius-lg)] border border-[var(--color-border-tertiary)] bg-[var(--color-background-secondary)] p-4">
-      <div className="mb-3">
-        <h3 className="text-sm font-semibold text-[var(--color-text-primary)]">Anzeigeoptionen</h3>
-        <p className="mt-1 text-sm text-[var(--color-text-secondary)]">
-          Steuert, welche Elemente in der öffentlichen Statusansicht sichtbar sind.
+    <section className="card grid gap-4 px-4 py-4 shadow-none">
+      <div>
+        <h2 className="font-display text-base font-medium text-[var(--text-primary)]">
+          Anzeigeoptionen
+        </h2>
+        <p className="mt-1 text-sm text-[var(--text-secondary)]">
+          Sichtbarkeit einzelner Bereiche in der Statusansicht.
         </p>
       </div>
-      <div className="grid gap-2 sm:grid-cols-2">
-        {displaySettingOptions.map((option) => {
-          const disabled = option.dependsOn && !settings[option.dependsOn]
+      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+        {displaySettingOptions.map(([key, label]) => {
+          const disabled = key === 'showNextDue' && !settings.showHeaderSummary
           return (
             <label
-              key={option.key}
-              className={`flex items-start gap-3 rounded-[var(--border-radius-md)] border border-[var(--color-border-tertiary)] bg-[var(--color-background-primary)] p-3 ${
+              key={key}
+              className={`flex items-center justify-between gap-3 rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--bg-base)] px-3 py-2.5 ${
                 disabled ? 'opacity-55' : ''
               }`}
             >
+              <span className="text-sm font-medium text-[var(--text-primary)]">{label}</span>
               <input
                 type="checkbox"
-                checked={Boolean(settings[option.key])}
+                checked={Boolean(settings[key])}
                 disabled={disabled}
-                onChange={(event) => updateSetting(option.key, event.target.checked)}
-                className="mt-1 h-4 w-4 accent-[var(--color-accent)]"
+                onChange={(event) => updateSetting(key, event.target.checked)}
+                className="h-4 w-4 accent-[var(--accent)]"
               />
-              <span>
-                <span className="block text-sm font-semibold text-[var(--color-text-primary)]">
-                  {option.label}
-                </span>
-                <span className="mt-0.5 block text-xs leading-5 text-[var(--color-text-secondary)]">
-                  {option.description}
-                </span>
-              </span>
             </label>
           )
         })}
@@ -458,266 +426,18 @@ function DisplaySettingsPanel({ settings, setSettings }) {
   )
 }
 
-function EntryForm({ draft, setDraft, onSubmit, editing, onCancel }) {
+function SidebarItem({ active = false, children }) {
   return (
-    <form onSubmit={onSubmit} className="mt-5 grid gap-5">
-      <FormSection title="Inhalt">
-        <Field label="Titel">
-          <input
-            value={draft.title}
-            onChange={(event) => setDraft({ ...draft, title: event.target.value })}
-            className={inputClass}
-            required
-          />
-        </Field>
-        <Field label="Beschreibung">
-          <textarea
-            value={draft.description}
-            onChange={(event) => setDraft({ ...draft, description: event.target.value })}
-            className={`${inputClass} min-h-28`}
-          />
-        </Field>
-      </FormSection>
-
-      <FormSection title="Einordnung">
-        <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="Kategorie">
-            <select
-              value={draft.category}
-              onChange={(event) => setDraft({ ...draft, category: event.target.value })}
-              className={inputClass}
-            >
-              {categories.map((category) => (
-                <option key={category}>{category}</option>
-              ))}
-            </select>
-          </Field>
-          <Field label="Typ">
-            <select
-              value={draft.type}
-              onChange={(event) => {
-                const type = event.target.value
-                setDraft({
-                  ...draft,
-                  type,
-                  showProgress: type === 'process',
-                  priority: type === 'info' ? '' : draft.priority || priorityOptions[0],
-                })
-              }}
-              className={inputClass}
-            >
-              {typeOptions.map((type) => (
-                <option key={type} value={type}>
-                  {formatType(type)}
-                </option>
-              ))}
-            </select>
-          </Field>
-        </div>
-      </FormSection>
-
-      <FormSection title="Status & Verantwortung">
-        <div className="grid gap-4 sm:grid-cols-3">
-          <Field label="Status">
-            <select
-              value={draft.status}
-              onChange={(event) => setDraft({ ...draft, status: event.target.value })}
-              className={inputClass}
-            >
-              {statusOptions.map((status) => (
-                <option key={status}>{status}</option>
-              ))}
-            </select>
-          </Field>
-          <Field label="Priorität">
-            <select
-              value={draft.priority}
-              onChange={(event) => setDraft({ ...draft, priority: event.target.value })}
-              className={inputClass}
-            >
-              <option value="">Keine Priorität</option>
-              {priorityOptions.map((priority) => (
-                <option key={priority}>{priority}</option>
-              ))}
-            </select>
-          </Field>
-          <Field label="Verantwortlicher">
-            <select
-              value={draft.owner}
-              onChange={(event) => setDraft({ ...draft, owner: event.target.value })}
-              className={inputClass}
-            >
-              {ownerOptions.map((owner) => (
-                <option key={owner}>{owner}</option>
-              ))}
-            </select>
-          </Field>
-        </div>
-      </FormSection>
-
-      <FormSection title="Termine">
-        <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="Datum letzter Stand">
-            <input
-              type="date"
-              value={draft.updatedAt}
-              onChange={(event) => setDraft({ ...draft, updatedAt: event.target.value })}
-              className={inputClass}
-            />
-          </Field>
-          <Field label="Fälligkeitsdatum">
-            <input
-              type="date"
-              value={draft.dueDate}
-              onChange={(event) => setDraft({ ...draft, dueDate: event.target.value })}
-              className={inputClass}
-            />
-          </Field>
-        </div>
-      </FormSection>
-
-      <FormActions editing={editing} onCancel={onCancel} />
-    </form>
-  )
-}
-
-function FormSection({ title, children }) {
-  return (
-    <fieldset className="rounded-[var(--border-radius-lg)] border border-[var(--color-border-tertiary)] bg-[var(--color-background-secondary)] p-4">
-      <legend className="px-1 text-xs font-bold uppercase tracking-wide text-[var(--color-text-secondary)]">
-        {title}
-      </legend>
-      <div className="mt-2 grid gap-4">{children}</div>
-    </fieldset>
-  )
-}
-
-const inputClass =
-  'mt-2 w-full rounded-[var(--border-radius-md)] border border-[var(--color-border-tertiary)] bg-[var(--color-background-primary)] px-3 py-2 text-sm text-[var(--color-text-primary)] outline-none transition focus:border-[var(--color-accent)] focus:ring-2 focus:ring-[var(--color-focus)]'
-
-function formatType(type) {
-  const labels = {
-    info: 'Info',
-    task: 'Aufgabe',
-    process: 'Prozess',
-  }
-  return labels[type] || 'Info'
-}
-
-function Field({ label, children }) {
-  return (
-    <label className="block text-sm font-medium text-[var(--color-text-secondary)]">
-      {label}
+    <button
+      type="button"
+      className={`rounded-[var(--radius-md)] px-3 py-2 text-left text-sm font-semibold ${
+        active
+          ? 'bg-[var(--bg-elevated)] text-[var(--text-primary)]'
+          : 'text-[var(--text-secondary)] hover:bg-[var(--bg-elevated)] hover:text-[var(--text-primary)]'
+      }`}
+    >
       {children}
-    </label>
-  )
-}
-
-function FormActions({ editing, onCancel }) {
-  return (
-    <div className="flex flex-wrap gap-2">
-      <button
-        type="submit"
-        className="rounded-[var(--border-radius-md)] bg-[var(--color-accent)] px-4 py-2 text-sm font-semibold text-white shadow-sm hover:brightness-95"
-      >
-        {editing ? 'Änderungen speichern' : 'Anlegen'}
-      </button>
-      {editing && (
-        <button
-          type="button"
-          onClick={onCancel}
-          className="rounded-[var(--border-radius-md)] border border-[var(--color-border-tertiary)] bg-[var(--color-background-primary)] px-4 py-2 text-sm font-semibold text-[var(--color-text-primary)] shadow-sm hover:bg-[var(--color-background-secondary)]"
-        >
-          Abbrechen
-        </button>
-      )}
-    </div>
-  )
-}
-
-function ManageRow({
-  entry,
-  onEdit,
-  onRequestDelete,
-  onConfirmDelete,
-  onCancelDelete,
-  confirmingDelete,
-}) {
-  return (
-    <article className="flex flex-col gap-3 rounded-[var(--border-radius-md)] border border-[var(--color-border-tertiary)] bg-[var(--color-background-secondary)] px-3 py-2.5 sm:flex-row sm:items-center sm:justify-between">
-      <div className="min-w-0">
-        <h4 className="truncate font-semibold text-[var(--color-text-primary)]">{entry.title}</h4>
-        <div className="mt-1.5 flex flex-wrap gap-1.5">
-          <AdminChip>{entry.category}</AdminChip>
-          <AdminChip tone={entry.status === 'Erledigt' ? 'success' : entry.status === 'Neu' ? 'accent' : 'warning'}>
-            {entry.status}
-          </AdminChip>
-          <AdminChip>{entry.owner}</AdminChip>
-          <AdminChip>{formatType(entry.type)}</AdminChip>
-        </div>
-      </div>
-      <div className="flex shrink-0 gap-2">
-        {confirmingDelete ? (
-          <DeleteConfirmActions
-            onConfirm={onConfirmDelete}
-            onCancel={onCancelDelete}
-          />
-        ) : (
-          <>
-            <button
-              type="button"
-              onClick={onEdit}
-              className="rounded-[var(--border-radius-md)] border border-[var(--color-border-tertiary)] bg-[var(--color-background-primary)] px-3 py-2 text-sm font-semibold text-[var(--color-text-primary)] shadow-sm hover:bg-[var(--color-background-secondary)]"
-            >
-              Bearbeiten
-            </button>
-            <button
-              type="button"
-              onClick={onRequestDelete}
-              className="rounded-[var(--border-radius-md)] border border-[var(--color-danger)] bg-[var(--color-background-primary)] px-3 py-2 text-sm font-semibold text-[var(--color-danger-text)] shadow-sm hover:bg-[var(--color-danger-soft)]"
-            >
-              Löschen
-            </button>
-          </>
-        )}
-      </div>
-    </article>
-  )
-}
-
-function AdminChip({ tone = 'neutral', children }) {
-  const toneClass = {
-    accent: 'border-[var(--color-accent-border)] bg-[var(--color-accent-soft)] text-[var(--color-accent-text)]',
-    success: 'border-[var(--color-success)] bg-[var(--color-success-soft)] text-[var(--color-success-text)]',
-    warning: 'border-[var(--color-warning)] bg-[var(--color-warning-soft)] text-[var(--color-warning-text)]',
-    neutral: 'border-[var(--color-border-tertiary)] bg-[var(--color-background-primary)] text-[var(--color-text-secondary)]',
-  }
-
-  return (
-    <span className={`inline-flex items-center rounded border px-2 py-0.5 text-xs font-medium ${toneClass[tone]}`}>
-      {children}
-    </span>
-  )
-}
-
-function DeleteConfirmActions({ onConfirm, onCancel }) {
-  return (
-    <>
-      <button
-        type="button"
-        onClick={onConfirm}
-        className="rounded-[var(--border-radius-md)] bg-[var(--color-danger)] px-3 py-2 text-sm font-semibold text-white shadow-sm hover:brightness-95"
-      >
-        Löschen bestätigen
-      </button>
-      <button
-        type="button"
-        onClick={onCancel}
-        className="rounded-[var(--border-radius-md)] border border-[var(--color-border-tertiary)] bg-[var(--color-background-primary)] px-3 py-2 text-sm font-semibold text-[var(--color-text-primary)] shadow-sm hover:bg-[var(--color-background-secondary)]"
-      >
-        Abbrechen
-      </button>
-    </>
+    </button>
   )
 }
 

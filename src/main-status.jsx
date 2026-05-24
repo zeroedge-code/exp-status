@@ -27,6 +27,7 @@ export function StatusApp() {
   const [statusEntries, setStatusEntries] = useState(initialStatusEntries)
   const [settings, setSettings] = useState(defaultDisplaySettings)
   const [loadError, setLoadError] = useState('')
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     let active = true
@@ -36,10 +37,12 @@ export function StatusApp() {
         setStatusEntries(data.statusEntries)
         setSettings(data.settings)
         setLoadError('')
+        setLoading(false)
       })
       .catch((error) => {
         if (!active) return
         setLoadError(error.message)
+        setLoading(false)
       })
     return () => {
       active = false
@@ -49,11 +52,11 @@ export function StatusApp() {
   return (
     <div className="min-h-screen">
       {loadError && (
-        <div className="border-b border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-900">
-          <div className="mx-auto max-w-7xl">{loadError}</div>
+        <div className="border-b border-[var(--danger)] bg-[var(--color-danger-soft)] px-4 py-3 text-sm text-[var(--color-danger-text)]">
+          <div className="mx-auto max-w-2xl">{loadError}</div>
         </div>
       )}
-      <StatusPage statusEntries={statusEntries} settings={settings} />
+      <StatusPage statusEntries={statusEntries} settings={settings} loading={loading} />
     </div>
   )
 }
