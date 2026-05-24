@@ -142,6 +142,7 @@ test('PUT stores normalized valid data', async () => {
   expect(stored.statusEntries[0].category).toBe('Auszahlungen & Vergütung')
   expect(stored.settings.showHeaderSummary).toBe(true)
   expect(stored.settings.showNextDue).toBe(true)
+  expect(stored.settings.showLiveAge).toBe(false)
   expect(Object.keys(stored.statusEntries[0]).sort()).toEqual([
     'category',
     'createdAt',
@@ -176,6 +177,7 @@ test('PUT stores normalized display settings', async () => {
     showFilters: true,
     showCategories: false,
     showProgress: true,
+    showLiveAge: true,
   }
 
   const response = await onRequestPut({
@@ -202,6 +204,22 @@ test('PUT rejects invalid display settings', async () => {
 
   expect(response.status).toBe(400)
   expect(body.details).toContain('settings.showNextDue must be a boolean.')
+})
+
+test('PUT rejects invalid live age display setting', async () => {
+  const data = validData()
+  data.settings = {
+    showLiveAge: 'yes',
+  }
+
+  const response = await onRequestPut({
+    request: jsonRequest(data),
+    env: { APP_TARGET: 'admin', STATUS_STORE: createStore() },
+  })
+  const body = await response.json()
+
+  expect(response.status).toBe(400)
+  expect(body.details).toContain('settings.showLiveAge must be a boolean.')
 })
 
 test('PUT accepts legacy status entries without createdAt', async () => {

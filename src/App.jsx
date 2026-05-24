@@ -155,10 +155,14 @@ function App({ adminOnly = false }) {
 
   return (
     <div className="min-h-screen">
-      {isIntern && !adminOnly && <TopNavigation path={path} navigate={navigate} />}
       <SyncBanner syncState={syncState} syncError={syncError} adminOnly={adminOnly} />
       {isIntern ? (
-        <AdminDashboard data={data} updateData={updateData} syncState={syncState} syncError={syncError} />
+        <AdminDashboard
+          data={data}
+          updateData={updateData}
+          syncError={syncError}
+          onOpenStatus={adminOnly ? null : () => navigate('/status')}
+        />
       ) : (
         <StatusPage
           statusEntries={data.statusEntries}
@@ -194,47 +198,13 @@ function SyncBanner({ syncState, syncError, adminOnly }) {
   )
 }
 
-function TopNavigation({ path, navigate }) {
-  return (
-    <header className="border-b border-[var(--border)] bg-[var(--bg-surface)]/85 backdrop-blur-xl">
-      <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-4">
-        <button type="button" onClick={() => navigate('/status')} className="text-left">
-          <p className="font-display text-xs uppercase text-[var(--accent)]">Experten-Portal</p>
-          <p className="mt-1 text-lg font-semibold text-[var(--text-primary)]">Dein Überblick</p>
-        </button>
-        <nav className="inline-flex rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--bg-elevated)] p-1">
-          <NavButton active={path !== '/intern'} onClick={() => navigate('/status')}>
-            Status
-          </NavButton>
-          <NavButton active={path === '/intern'} onClick={() => navigate('/intern')}>
-            Intern
-          </NavButton>
-        </nav>
-      </div>
-    </header>
-  )
-}
-
-function NavButton({ active, children, onClick }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`rounded-[var(--radius-sm)] px-3 py-2 text-sm font-medium ${
-        active
-          ? 'bg-[var(--bg-surface)] text-[var(--text-primary)] shadow-sm'
-          : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
-      }`}
-    >
-      {children}
-    </button>
-  )
-}
-
-function AdminDashboard({ data, updateData, syncError }) {
+function AdminDashboard({ data, updateData, syncError, onOpenStatus }) {
   const [newEntry, setNewEntry] = useState(null)
   const [rowFlash, setRowFlash] = useState({})
   const [rowErrors, setRowErrors] = useState({})
+  const [activePanel, setActivePanel] = useState('entries')
+  const entriesRef = useRef(null)
+  const settingsRef = useRef(null)
   const adminEmail = import.meta.env.VITE_ADMIN_EMAIL || 'admin@expertenstatus.local'
 
   function setStatusEntries(statusEntries) {
@@ -283,6 +253,12 @@ function AdminDashboard({ data, updateData, syncError }) {
     }, 800)
   }
 
+  function scrollToPanel(panel) {
+    setActivePanel(panel)
+    const targetRef = panel === 'settings' ? settingsRef : entriesRef
+    targetRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
+
   return (
     <main className="min-h-screen bg-[var(--bg-base)]">
       <div className="grid min-h-screen lg:grid-cols-[17rem_minmax(0,1fr)]">
@@ -297,12 +273,21 @@ function AdminDashboard({ data, updateData, syncError }) {
               </p>
             </div>
             <nav className="flex gap-2 lg:grid">
-              <SidebarItem active>Einträge</SidebarItem>
-              <SidebarItem>Anzeige</SidebarItem>
+              <SidebarItem active={activePanel === 'entries'} onClick={() => scrollToPanel('entries')}>
+                Einträge
+              </SidebarItem>
+              <SidebarItem active={activePanel === 'settings'} onClick={() => scrollToPanel('settings')}>
+                Anzeige
+              </SidebarItem>
             </nav>
             <Button variant="ghost" onClick={handleAddEntry} className="justify-start">
-              + Experte hinzufügen
+              + Eintrag hinzufügen
             </Button>
+            {onOpenStatus && (
+              <Button variant="ghost" onClick={onOpenStatus} className="justify-start">
+                Statusansicht öffnen
+              </Button>
+            )}
           </div>
         </aside>
 
@@ -320,13 +305,11 @@ function AdminDashboard({ data, updateData, syncError }) {
           </header>
 
           <div className="mx-auto grid max-w-6xl gap-6 px-4 py-6">
-            <DisplaySettingsPanel settings={data.settings} setSettings={setSettings} />
-
-            <section className="grid gap-3">
+            <section ref={entriesRef} className="scroll-mt-24 grid gap-3">
               <div className="flex items-end justify-between gap-4">
                 <div>
                   <h2 className="font-display text-base font-medium text-[var(--text-primary)]">
-                    Experteneinträge
+                    Status-Einträge
                   </h2>
                   <p className="mt-1 text-sm text-[var(--text-secondary)]">
                     Inline bearbeiten, speichern und bei Bedarf entfernen.
@@ -362,8 +345,12 @@ function AdminDashboard({ data, updateData, syncError }) {
                 onClick={handleAddEntry}
                 className="rounded-[var(--radius-md)] border border-dashed border-[var(--border)] bg-[var(--bg-surface)] px-4 py-4 text-sm font-semibold text-[var(--text-secondary)] hover:border-[var(--accent)] hover:text-[var(--accent)]"
               >
-                + Experte hinzufügen
+                + Eintrag hinzufügen
               </button>
+            </section>
+
+            <section ref={settingsRef} className="scroll-mt-24">
+              <DisplaySettingsPanel settings={data.settings} setSettings={setSettings} />
             </section>
           </div>
         </section>
@@ -379,6 +366,7 @@ const displaySettingOptions = [
   ['showFilters', 'Filterleiste'],
   ['showCategories', 'Kategorie-Überschriften'],
   ['showProgress', 'Fortschrittsbalken'],
+  ['showLiveAge', 'Live-Alter anzeigen'],
 ]
 
 function DisplaySettingsPanel({ settings, setSettings }) {
@@ -426,10 +414,11 @@ function DisplaySettingsPanel({ settings, setSettings }) {
   )
 }
 
-function SidebarItem({ active = false, children }) {
+function SidebarItem({ active = false, children, onClick }) {
   return (
     <button
       type="button"
+      onClick={onClick}
       className={`rounded-[var(--radius-md)] px-3 py-2 text-left text-sm font-semibold ${
         active
           ? 'bg-[var(--bg-elevated)] text-[var(--text-primary)]'

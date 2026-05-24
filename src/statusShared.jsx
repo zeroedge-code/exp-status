@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
+import { StatusPill } from './components/StatusPill.jsx'
 import { StatusCard } from './components/StatusCard.jsx'
 import { SkeletonRow } from './components/SkeletonRow.jsx'
 import { categories, defaultDisplaySettings, formatDate } from './statusData.js'
@@ -36,38 +37,118 @@ export function StatusPage({
   const visibleEntries = statusEntries.filter((entry) => entryMatchesFilter(entry, activeFilter))
   const openEntries = statusEntries.filter((entry) => normalizeStatus(entry.status) !== 'erledigt')
   const nextDueEntry = getNextDueEntry(openEntries)
+  const stats = useMemo(
+    () => ({
+      offen: statusEntries.filter((entry) => normalizeStatus(entry.status) !== 'erledigt').length,
+      eintraege: statusEntries.length,
+      naechsteFrist:
+        displaySettings.showNextDue && nextDueEntry ? getDueText(getDueDate(nextDueEntry)) : null,
+    }),
+    [displaySettings.showNextDue, nextDueEntry, statusEntries],
+  )
 
   return (
     <main className="min-h-screen px-4 py-6 sm:py-10">
       <div className="mx-auto max-w-2xl">
-        <header className="mb-8 flex items-start justify-between gap-4">
-          <div>
-            <p className="font-display text-sm font-medium uppercase text-[var(--text-primary)]">
-              Expertenstatus
-            </p>
-            <span className="sr-only">Statusmeldungen</span>
-            <p className="mt-2 max-w-md text-sm leading-6 text-[var(--text-secondary)]">
-              {intro}
-            </p>
-          </div>
-          <div className="shrink-0 text-right">
-            <p className="label">Letzter Stand</p>
-            <p className="mt-1 text-sm text-[var(--text-secondary)]">
-              {latestUpdate ? formatDate(toDateInputValue(latestUpdate)) : 'Wird geladen'}
-            </p>
-          </div>
-        </header>
+        <header
+          style={{
+            background: 'white',
+            borderRadius: 'var(--radius-md)',
+            border: '0.5px solid var(--border)',
+            overflow: 'hidden',
+            marginBottom: '1.5rem',
+          }}
+        >
+          <div
+            style={{
+              padding: '20px 24px 16px',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              gap: '16px',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: 0 }}>
+              <div
+                style={{
+                  width: '36px',
+                  height: '36px',
+                  background: '#dbeafe',
+                  borderRadius: '8px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0,
+                }}
+              >
+                <ChartBarIcon />
+              </div>
+              <div style={{ minWidth: 0 }}>
+                <h1
+                  style={{
+                    fontSize: '16px',
+                    fontWeight: 500,
+                    margin: 0,
+                    letterSpacing: '-0.01em',
+                  }}
+                >
+                  Expertenstatus
+                </h1>
+                <span className="sr-only">Statusmeldungen</span>
+                <p
+                  style={{
+                    fontSize: '12px',
+                    color: 'var(--text-secondary)',
+                    margin: 0,
+                  }}
+                >
+                  Aktueller Überblick aller Themen und Aufgaben
+                </p>
+              </div>
+            </div>
 
-        {displaySettings.showHeaderSummary && (
-          <section className="mb-5 grid gap-2 sm:grid-cols-3">
-            <SummaryPill label="Offen" value={openEntries.length} />
-            <SummaryPill label="Einträge" value={statusEntries.length} />
-            <SummaryPill
-              label="Nächste Frist"
-              value={displaySettings.showNextDue && nextDueEntry ? getDueText(getDueDate(nextDueEntry)) : 'Keine'}
+            <StatusPill
+              lastUpdated={latestUpdate}
+              isLoading={loading}
+              showAge={displaySettings.showLiveAge}
             />
-          </section>
-        )}
+          </div>
+
+          {displaySettings.showHeaderSummary && (
+            <>
+              <div style={{ height: '0.5px', background: 'var(--border)' }} />
+              <div
+                style={{
+                  padding: '12px 24px',
+                  display: 'flex',
+                  gap: '24px',
+                  flexWrap: 'wrap',
+                }}
+              >
+                <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
+                  <span style={{ fontWeight: 500, color: 'var(--text-primary)' }}>
+                    {stats.offen}
+                  </span>{' '}
+                  Offen
+                </span>
+                <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
+                  <span style={{ fontWeight: 500, color: 'var(--text-primary)' }}>
+                    {stats.eintraege}
+                  </span>{' '}
+                  Einträge
+                </span>
+                <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
+                  Nächste Frist:{' '}
+                  <span style={{ fontWeight: 500, color: 'var(--text-primary)' }}>
+                    {stats.naechsteFrist ?? 'Keine'}
+                  </span>
+                </span>
+              </div>
+            </>
+          )}
+          <div hidden>{intro}</div>
+          <div hidden>{latestUpdate ? formatDate(toDateInputValue(latestUpdate)) : 'Wird geladen'}</div>
+        </header>
 
         {displaySettings.showFilters && (
           <div className="-mx-4 mb-5 flex gap-3 overflow-x-auto px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
@@ -143,17 +224,6 @@ export function StatusPage({
   )
 }
 
-function SummaryPill({ label, value }) {
-  return (
-    <div className="card px-3 py-3 shadow-none">
-      <p className="label">{label}</p>
-      <p className="mt-1 truncate font-display text-lg font-medium text-[var(--text-primary)]">
-        {value}
-      </p>
-    </div>
-  )
-}
-
 function FilterGroup({ label, options, entries, activeFilter, setActiveFilter }) {
   return (
     <div className="flex w-max items-center gap-1 rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--bg-surface)] p-1">
@@ -180,6 +250,27 @@ function FilterGroup({ label, options, entries, activeFilter, setActiveFilter })
         )
       })}
     </div>
+  )
+}
+
+function ChartBarIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      style={{ width: '18px', height: '18px', color: 'var(--accent)' }}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M4 19V5" />
+      <path d="M4 19h16" />
+      <path d="M8 16v-5" />
+      <path d="M12 16V8" />
+      <path d="M16 16v-3" />
+    </svg>
   )
 }
 

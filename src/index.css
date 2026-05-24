@@ -304,7 +304,7 @@ textarea:focus-visible {
 
   75%,
   100% {
-    transform: scale(2);
+    transform: scale(2.2);
     opacity: 0;
   }
 }

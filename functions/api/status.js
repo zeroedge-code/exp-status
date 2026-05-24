@@ -28,6 +28,7 @@ const defaultSettings = {
   showFilters: true,
   showCategories: true,
   showProgress: true,
+  showLiveAge: false,
 }
 
 const statusMigration = {

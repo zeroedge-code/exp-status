@@ -75,7 +75,7 @@ test('creates a status entry from the intern dashboard form', async () => {
 
   await renderLoadedAdmin()
 
-  const addButtons = screen.getAllByRole('button', { name: '+ Experte hinzufügen' })
+  const addButtons = screen.getAllByRole('button', { name: '+ Eintrag hinzufügen' })
   await user.click(addButtons.at(-1))
 
   const newEntryHeading = await screen.findByRole('heading', { name: 'Neuer Eintrag' })
