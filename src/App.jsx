@@ -203,9 +203,6 @@ function AdminDashboard({ data, updateData, syncError, onOpenStatus }) {
   const [rowFlash, setRowFlash] = useState({})
   const [rowErrors, setRowErrors] = useState({})
   const [activePanel, setActivePanel] = useState('entries')
-  const entriesRef = useRef(null)
-  const settingsRef = useRef(null)
-  const adminEmail = import.meta.env.VITE_ADMIN_EMAIL || 'admin@expertenstatus.local'
 
   function setStatusEntries(statusEntries) {
     return updateData({ ...data, statusEntries })
@@ -253,10 +250,8 @@ function AdminDashboard({ data, updateData, syncError, onOpenStatus }) {
     }, 800)
   }
 
-  function scrollToPanel(panel) {
+  function showPanel(panel) {
     setActivePanel(panel)
-    const targetRef = panel === 'settings' ? settingsRef : entriesRef
-    targetRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }
 
   return (
@@ -273,16 +268,18 @@ function AdminDashboard({ data, updateData, syncError, onOpenStatus }) {
               </p>
             </div>
             <nav className="flex gap-2 lg:grid">
-              <SidebarItem active={activePanel === 'entries'} onClick={() => scrollToPanel('entries')}>
+              <SidebarItem active={activePanel === 'entries'} onClick={() => showPanel('entries')}>
                 Einträge
               </SidebarItem>
-              <SidebarItem active={activePanel === 'settings'} onClick={() => scrollToPanel('settings')}>
+              <SidebarItem active={activePanel === 'settings'} onClick={() => showPanel('settings')}>
                 Anzeige
               </SidebarItem>
             </nav>
-            <Button variant="ghost" onClick={handleAddEntry} className="justify-start">
-              + Eintrag hinzufügen
-            </Button>
+            {activePanel === 'entries' && (
+              <Button variant="ghost" onClick={handleAddEntry} className="justify-start">
+                + Eintrag hinzufügen
+              </Button>
+            )}
             {onOpenStatus && (
               <Button variant="ghost" onClick={onOpenStatus} className="justify-start">
                 Statusansicht öffnen
@@ -297,61 +294,60 @@ function AdminDashboard({ data, updateData, syncError, onOpenStatus }) {
               <div>
                 <span className="badge bg-[var(--bg-surface)] text-[var(--accent)]">Admin</span>
                 <h1 className="mt-3 text-2xl font-semibold text-[var(--text-primary)]">
-                  Internes Dashboard
+                  {activePanel === 'settings' ? 'Anzeigeoptionen' : 'Internes Dashboard'}
                 </h1>
               </div>
-              <p className="hidden text-sm text-[var(--text-muted)] sm:block">{adminEmail}</p>
             </div>
           </header>
 
           <div className="mx-auto grid max-w-6xl gap-6 px-4 py-6">
-            <section ref={entriesRef} className="scroll-mt-24 grid gap-3">
-              <div className="flex items-end justify-between gap-4">
-                <div>
-                  <h2 className="font-display text-base font-medium text-[var(--text-primary)]">
-                    Status-Einträge
-                  </h2>
-                  <p className="mt-1 text-sm text-[var(--text-secondary)]">
-                    Inline bearbeiten, speichern und bei Bedarf entfernen.
-                  </p>
+            {activePanel === 'entries' ? (
+              <section className="grid gap-3">
+                <div className="flex items-end justify-between gap-4">
+                  <div>
+                    <h2 className="font-display text-base font-medium text-[var(--text-primary)]">
+                      Status-Einträge
+                    </h2>
+                    <p className="mt-1 text-sm text-[var(--text-secondary)]">
+                      Inline bearbeiten, speichern und bei Bedarf entfernen.
+                    </p>
+                  </div>
+                  <span className="label">{data.statusEntries.length} Einträge</span>
                 </div>
-                <span className="label">{data.statusEntries.length} Einträge</span>
-              </div>
 
-              {newEntry && (
-                <AdminRow
-                  entry={newEntry}
-                  isNew
-                  onSave={saveEntry}
-                  onCancelNew={() => setNewEntry(null)}
-                  flash={rowFlash[newEntry.id]}
-                  error={rowErrors[newEntry.id]}
-                />
-              )}
+                {newEntry && (
+                  <AdminRow
+                    entry={newEntry}
+                    isNew
+                    onSave={saveEntry}
+                    onCancelNew={() => setNewEntry(null)}
+                    flash={rowFlash[newEntry.id]}
+                    error={rowErrors[newEntry.id]}
+                  />
+                )}
 
-              {data.statusEntries.map((entry) => (
-                <AdminRow
-                  key={`${entry.id}:${entry.title}:${entry.updatedAt}`}
-                  entry={entry}
-                  onSave={saveEntry}
-                  onDelete={() => deleteEntry(entry.id)}
-                  flash={rowFlash[entry.id]}
-                  error={rowErrors[entry.id]}
-                />
-              ))}
+                {data.statusEntries.map((entry) => (
+                  <AdminRow
+                    key={`${entry.id}:${entry.title}:${entry.updatedAt}`}
+                    entry={entry}
+                    onSave={saveEntry}
+                    onDelete={() => deleteEntry(entry.id)}
+                    flash={rowFlash[entry.id]}
+                    error={rowErrors[entry.id]}
+                  />
+                ))}
 
-              <button
-                type="button"
-                onClick={handleAddEntry}
-                className="rounded-[var(--radius-md)] border border-dashed border-[var(--border)] bg-[var(--bg-surface)] px-4 py-4 text-sm font-semibold text-[var(--text-secondary)] hover:border-[var(--accent)] hover:text-[var(--accent)]"
-              >
-                + Eintrag hinzufügen
-              </button>
-            </section>
-
-            <section ref={settingsRef} className="scroll-mt-24">
+                <button
+                  type="button"
+                  onClick={handleAddEntry}
+                  className="rounded-[var(--radius-md)] border border-dashed border-[var(--border)] bg-[var(--bg-surface)] px-4 py-4 text-sm font-semibold text-[var(--text-secondary)] hover:border-[var(--accent)] hover:text-[var(--accent)]"
+                >
+                  + Eintrag hinzufügen
+                </button>
+              </section>
+            ) : (
               <DisplaySettingsPanel settings={data.settings} setSettings={setSettings} />
-            </section>
+            )}
           </div>
         </section>
       </div>

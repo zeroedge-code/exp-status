@@ -309,7 +309,8 @@ export async function onRequestGet({ env }) {
 }
 
 export async function onRequestPut({ request, env }) {
-  if (env.APP_TARGET !== 'admin') {
+  const isAdminTarget = env.APP_TARGET === 'admin' || env.VITE_APP_TARGET === 'admin'
+  if (!isAdminTarget) {
     return jsonResponse({ error: 'Writes are only allowed from the admin app.' }, { status: 403 })
   }
 

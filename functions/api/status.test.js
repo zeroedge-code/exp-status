@@ -91,6 +91,15 @@ test('PUT rejects writes outside admin target', async () => {
   expect(body.error).toBe('Writes are only allowed from the admin app.')
 })
 
+test('PUT accepts writes with Vite admin target binding', async () => {
+  const response = await onRequestPut({
+    request: jsonRequest(validData()),
+    env: { VITE_APP_TARGET: 'admin', STATUS_STORE: createStore() },
+  })
+
+  expect(response.status).toBe(200)
+})
+
 test('PUT rejects malformed JSON', async () => {
   const response = await onRequestPut({
     request: new Request('https://example.com/api/status', {

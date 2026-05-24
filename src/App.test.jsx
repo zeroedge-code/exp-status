@@ -113,6 +113,7 @@ test('saves public display settings from the intern dashboard', async () => {
 
   await renderLoadedAdmin()
 
+  await user.click(screen.getByRole('button', { name: 'Anzeige' }))
   await user.click(screen.getByLabelText(/Nächste Frist/))
 
   await waitFor(() => {
@@ -120,6 +121,24 @@ test('saves public display settings from the intern dashboard', async () => {
     expect(saveCall).toBeTruthy()
     expect(JSON.parse(saveCall[1].body).settings.showNextDue).toBe(false)
   })
+})
+
+test('switches between admin entries and display settings panels', async () => {
+  const user = userEvent.setup()
+
+  await renderLoadedAdmin()
+
+  expect(screen.getByRole('heading', { name: 'Status-Einträge' })).toBeInTheDocument()
+  expect(screen.queryByRole('heading', { name: 'Anzeigeoptionen' })).not.toBeInTheDocument()
+
+  await user.click(screen.getByRole('button', { name: 'Anzeige' }))
+
+  expect(screen.getByRole('heading', { name: 'Anzeigeoptionen', level: 2 })).toBeInTheDocument()
+  expect(screen.queryByRole('heading', { name: 'Status-Einträge' })).not.toBeInTheDocument()
+
+  await user.click(screen.getByRole('button', { name: 'Einträge' }))
+
+  expect(screen.getByRole('heading', { name: 'Status-Einträge' })).toBeInTheDocument()
 })
 
 test('edits an existing status entry from its dashboard row', async () => {
