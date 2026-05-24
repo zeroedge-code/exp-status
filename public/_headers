@@ -1,2 +1,2 @@
 /*
-  Content-Security-Policy: frame-ancestors 'self' https://smartoder.com https://*.smartoder.com https://expertiger.zeroedge.tech
+Content-Security-Policy: frame-ancestors 'self' https://smartoder.com https://www.smartoder.com https://expertiger.zeroedge.tech;
