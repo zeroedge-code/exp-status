@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { AdminRow } from './components/AdminRow.jsx'
 import { Button } from './components/Button.jsx'
 import { StatusPage } from './statusShared.jsx'
@@ -26,6 +26,7 @@ const emptyStatusEntry = {
 }
 
 const initialData = {
+  revision: 1,
   statusEntries: createInitialStatusEntries(),
   settings: defaultDisplaySettings,
   tasks: [],
@@ -37,6 +38,7 @@ const useLocalDevStore =
 
 function normalizeData(rawData) {
   return {
+    revision: Number.isInteger(rawData?.revision) && rawData.revision > 0 ? rawData.revision : 1,
     statusEntries: normalizeStatusEntries(rawData, initialData.statusEntries),
     settings: normalizeDisplaySettings(rawData),
     tasks: Array.isArray(rawData?.tasks)
@@ -63,7 +65,11 @@ async function fetchData() {
 
 async function saveData(nextData) {
   if (useLocalDevStore) {
-    const normalizedData = normalizeData(nextData)
+    const nextNormalizedData = normalizeData(nextData)
+    const normalizedData = {
+      ...nextNormalizedData,
+      revision: nextNormalizedData.revision + 1,
+    }
     window.localStorage.setItem(localDevStorageKey, JSON.stringify(normalizedData))
     return normalizedData
   }
@@ -80,6 +86,39 @@ async function saveData(nextData) {
       payload?.error
         ? `${payload.error}${details}`
         : 'Statusdaten konnten nicht gespeichert werden.',
+    )
+  }
+  return normalizeData(payload)
+}
+
+async function saveSettings(settings, revision) {
+  if (useLocalDevStore) {
+    const stored = window.localStorage.getItem(localDevStorageKey)
+    const currentData = stored ? normalizeData(JSON.parse(stored)) : initialData
+    const normalizedData = normalizeData({
+      ...currentData,
+      revision: currentData.revision + 1,
+      settings: {
+        ...currentData.settings,
+        ...settings,
+      },
+    })
+    window.localStorage.setItem(localDevStorageKey, JSON.stringify(normalizedData))
+    return normalizedData
+  }
+
+  const response = await fetch('/api/status', {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ revision, settings }),
+  })
+  const payload = await response.json().catch(() => null)
+  if (!response.ok) {
+    const details = Array.isArray(payload?.details) ? ` ${payload.details.join(' ')}` : ''
+    throw new Error(
+      payload?.error
+        ? `${payload.error}${details}`
+        : 'Anzeigeoptionen konnten nicht gespeichert werden.',
     )
   }
   return normalizeData(payload)
@@ -151,6 +190,36 @@ function App({ adminOnly = false }) {
     }
   }
 
+  async function updateSettings(settings) {
+    const requestId = saveRequestId.current + 1
+    saveRequestId.current = requestId
+    const previousData = data
+    const optimisticData = normalizeData({
+      ...data,
+      settings: {
+        ...data.settings,
+        ...settings,
+      },
+    })
+    setData(optimisticData)
+    setSyncError('')
+    setSyncState('saving')
+    try {
+      const savedData = await saveSettings(optimisticData.settings, data.revision)
+      if (requestId !== saveRequestId.current) return
+      setData(savedData)
+      setSyncError('')
+      setSyncState('saved')
+      return true
+    } catch (error) {
+      if (requestId !== saveRequestId.current) return
+      setData(previousData)
+      setSyncError(error.message)
+      setSyncState('error')
+      return false
+    }
+  }
+
   const isIntern = adminOnly || path === '/intern'
 
   return (
@@ -160,6 +229,7 @@ function App({ adminOnly = false }) {
         <AdminDashboard
           data={data}
           updateData={updateData}
+          updateSettings={updateSettings}
           syncError={syncError}
           onOpenStatus={adminOnly ? null : () => navigate('/status')}
         />
@@ -198,18 +268,43 @@ function SyncBanner({ syncState, syncError, adminOnly }) {
   )
 }
 
-function AdminDashboard({ data, updateData, syncError, onOpenStatus }) {
+function AdminDashboard({ data, updateData, updateSettings, syncError, onOpenStatus }) {
   const [newEntry, setNewEntry] = useState(null)
   const [rowFlash, setRowFlash] = useState({})
   const [rowErrors, setRowErrors] = useState({})
+  const [rowSaveStates, setRowSaveStates] = useState({})
   const [activePanel, setActivePanel] = useState('entries')
+  const [entrySearch, setEntrySearch] = useState('')
+  const [entryStatusFilter, setEntryStatusFilter] = useState('all')
+  const [entrySortMode, setEntrySortMode] = useState('updated_desc')
+  const [settingsSaveState, setSettingsSaveState] = useState('idle')
+  const [settingsError, setSettingsError] = useState('')
 
   function setStatusEntries(statusEntries) {
     return updateData({ ...data, statusEntries })
   }
 
-  function setSettings(settings) {
-    return updateData({ ...data, settings })
+  function setRowSaveState(id, state) {
+    setRowSaveStates((current) => ({ ...current, [id]: state }))
+  }
+
+  function clearRowState(id) {
+    setRowErrors((current) => ({ ...current, [id]: '' }))
+    setRowSaveStates((current) => ({ ...current, [id]: 'idle' }))
+  }
+
+  async function setSettings(settings) {
+    setSettingsSaveState('saving')
+    setSettingsError('')
+    const saved = await updateSettings(settings)
+    if (saved) {
+      setSettingsSaveState('saved')
+      window.setTimeout(() => setSettingsSaveState('idle'), 1400)
+      return true
+    }
+    setSettingsSaveState('error')
+    setSettingsError(syncError || 'Anzeigeoptionen konnten nicht gespeichert werden.')
+    return false
   }
 
   async function saveEntry(nextEntry) {
@@ -220,23 +315,33 @@ function AdminDashboard({ data, updateData, syncError, onOpenStatus }) {
       createdAt: nextEntry.createdAt || today,
       updatedAt: nextEntry.updatedAt || today,
     }
+    setRowSaveState(savedEntry.id, 'saving')
+    setRowErrors((current) => ({ ...current, [savedEntry.id]: '' }))
     const statusEntries = isNew
       ? [savedEntry, ...data.statusEntries]
       : data.statusEntries.map((entry) => (entry.id === savedEntry.id ? savedEntry : entry))
 
     const saved = await setStatusEntries(statusEntries)
     if (!saved) {
-      setRowErrors((current) => ({ ...current, [savedEntry.id]: syncError || 'Statusdaten konnten nicht gespeichert werden.' }))
+      setRowSaveState(savedEntry.id, 'error')
+      setRowErrors((current) => ({
+        ...current,
+        [savedEntry.id]: syncError || 'Statusdaten konnten nicht gespeichert werden.',
+      }))
       markRow(savedEntry.id, 'error')
       return
     }
     setNewEntry(null)
+    setRowSaveState(savedEntry.id, 'saved')
+    window.setTimeout(() => setRowSaveState(savedEntry.id, 'idle'), 1400)
     setRowErrors((current) => ({ ...current, [savedEntry.id]: '' }))
     markRow(savedEntry.id, 'success')
   }
 
   async function deleteEntry(id) {
     await setStatusEntries(data.statusEntries.filter((entry) => entry.id !== id))
+    setRowErrors((current) => ({ ...current, [id]: '' }))
+    setRowSaveStates((current) => ({ ...current, [id]: 'idle' }))
   }
 
   function handleAddEntry() {
@@ -254,6 +359,30 @@ function AdminDashboard({ data, updateData, syncError, onOpenStatus }) {
     setActivePanel(panel)
   }
 
+  const visibleEntries = useMemo(() => {
+    const query = entrySearch.trim().toLowerCase()
+    const filtered = data.statusEntries.filter((entry) => {
+      const matchesQuery =
+        query.length === 0 ||
+        [entry.title, entry.description, entry.category, entry.owner, entry.status]
+          .filter(Boolean)
+          .some((value) => value.toLowerCase().includes(query))
+
+      const matchesStatus =
+        entryStatusFilter === 'all' ||
+        (entryStatusFilter === 'open'
+          ? entry.status === 'Neu' || entry.status === 'Offen' || entry.status === 'Dringend'
+          : entry.status.toLowerCase() === entryStatusFilter)
+
+      return matchesQuery && matchesStatus
+    })
+
+    return filtered.sort((firstEntry, secondEntry) => compareEntries(firstEntry, secondEntry, entrySortMode))
+  }, [data.statusEntries, entrySearch, entrySortMode, entryStatusFilter])
+
+  const hasEntryFilters =
+    entrySearch.trim().length > 0 || entryStatusFilter !== 'all' || entrySortMode !== 'updated_desc'
+
   return (
     <main className="min-h-screen bg-[var(--bg-base)]">
       <div className="grid min-h-screen lg:grid-cols-[17rem_minmax(0,1fr)]">
@@ -268,10 +397,18 @@ function AdminDashboard({ data, updateData, syncError, onOpenStatus }) {
               </p>
             </div>
             <nav className="flex gap-2 lg:grid">
-              <SidebarItem active={activePanel === 'entries'} onClick={() => showPanel('entries')}>
+              <SidebarItem
+                active={activePanel === 'entries'}
+                onClick={() => showPanel('entries')}
+                ariaLabel="Einträge"
+              >
                 Einträge
               </SidebarItem>
-              <SidebarItem active={activePanel === 'settings'} onClick={() => showPanel('settings')}>
+              <SidebarItem
+                active={activePanel === 'settings'}
+                onClick={() => showPanel('settings')}
+                ariaLabel="Anzeige"
+              >
                 Anzeige
               </SidebarItem>
             </nav>
@@ -303,7 +440,7 @@ function AdminDashboard({ data, updateData, syncError, onOpenStatus }) {
           <div className="mx-auto grid max-w-6xl gap-6 px-4 py-6">
             {activePanel === 'entries' ? (
               <section className="grid gap-3">
-                <div className="flex items-end justify-between gap-4">
+                <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
                   <div>
                     <h2 className="font-display text-base font-medium text-[var(--text-primary)]">
                       Status-Einträge
@@ -312,46 +449,166 @@ function AdminDashboard({ data, updateData, syncError, onOpenStatus }) {
                       Inline bearbeiten, speichern und bei Bedarf entfernen.
                     </p>
                   </div>
-                  <span className="label">{data.statusEntries.length} Einträge</span>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="label">
+                      {visibleEntries.length} von {data.statusEntries.length} Einträgen
+                    </span>
+                    {hasEntryFilters && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          setEntrySearch('')
+                          setEntryStatusFilter('all')
+                          setEntrySortMode('updated_desc')
+                        }}
+                      >
+                        Filter zurücksetzen
+                      </Button>
+                    )}
+                  </div>
+                </div>
+
+                <div className="grid gap-2 rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--bg-surface)] p-3 lg:grid-cols-[minmax(0,1fr)_12rem_12rem]">
+                  <label className="grid gap-1.5">
+                    <span className="label">Suche</span>
+                    <input
+                      value={entrySearch}
+                      onChange={(event) => setEntrySearch(event.target.value)}
+                      className="field"
+                      placeholder="Titel, Kategorie oder Hinweis"
+                    />
+                  </label>
+                  <label className="grid gap-1.5">
+                    <span className="label">Status</span>
+                    <select
+                      value={entryStatusFilter}
+                      onChange={(event) => setEntryStatusFilter(event.target.value)}
+                      className="field select-field"
+                    >
+                      <option value="all">Alle</option>
+                      <option value="neu">Neu</option>
+                      <option value="open">In Bearbeitung</option>
+                      <option value="erledigt">Erledigt</option>
+                    </select>
+                  </label>
+                  <label className="grid gap-1.5">
+                    <span className="label">Sortierung</span>
+                    <select
+                      value={entrySortMode}
+                      onChange={(event) => setEntrySortMode(event.target.value)}
+                      className="field select-field"
+                    >
+                      <option value="updated_desc">Zuletzt aktualisiert</option>
+                      <option value="due_asc">Fällig zuerst</option>
+                      <option value="title_asc">Titel A-Z</option>
+                    </select>
+                  </label>
                 </div>
 
                 {newEntry && (
-                  <AdminRow
-                    entry={newEntry}
-                    isNew
-                    onSave={saveEntry}
-                    onCancelNew={() => setNewEntry(null)}
-                    flash={rowFlash[newEntry.id]}
-                    error={rowErrors[newEntry.id]}
-                  />
+                    <AdminRow
+                      entry={newEntry}
+                      isNew
+                      onSave={saveEntry}
+                      onCancelNew={() => setNewEntry(null)}
+                      onEdit={() => clearRowState(newEntry.id)}
+                      flash={rowFlash[newEntry.id]}
+                      error={rowErrors[newEntry.id]}
+                      saveState={rowSaveStates[newEntry.id] || 'idle'}
+                    />
                 )}
 
-                {data.statusEntries.map((entry) => (
-                  <AdminRow
-                    key={`${entry.id}:${entry.title}:${entry.updatedAt}`}
-                    entry={entry}
-                    onSave={saveEntry}
-                    onDelete={() => deleteEntry(entry.id)}
-                    flash={rowFlash[entry.id]}
-                    error={rowErrors[entry.id]}
+                {visibleEntries.length > 0 ? (
+                  visibleEntries.map((entry) => (
+                    <AdminRow
+                      key={`${entry.id}:${entry.title}:${entry.updatedAt}`}
+                      entry={entry}
+                      onSave={saveEntry}
+                      onDelete={() => deleteEntry(entry.id)}
+                      onEdit={() => clearRowState(entry.id)}
+                      flash={rowFlash[entry.id]}
+                      error={rowErrors[entry.id]}
+                      saveState={rowSaveStates[entry.id] || 'idle'}
+                    />
+                  ))
+                ) : !newEntry ? (
+                  <EmptyEntriesState
+                    hasFilters={hasEntryFilters}
+                    onResetFilters={() => {
+                      setEntrySearch('')
+                      setEntryStatusFilter('all')
+                      setEntrySortMode('updated_desc')
+                    }}
+                    onAddEntry={handleAddEntry}
                   />
-                ))}
+                ) : null}
 
-                <button
-                  type="button"
-                  onClick={handleAddEntry}
-                  className="rounded-[var(--radius-md)] border border-dashed border-[var(--border)] bg-[var(--bg-surface)] px-4 py-4 text-sm font-semibold text-[var(--text-secondary)] hover:border-[var(--accent)] hover:text-[var(--accent)]"
-                >
-                  + Eintrag hinzufügen
-                </button>
+                {visibleEntries.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={handleAddEntry}
+                    className="rounded-[var(--radius-md)] border border-dashed border-[var(--border)] bg-[var(--bg-surface)] px-4 py-4 text-sm font-semibold text-[var(--text-secondary)] hover:border-[var(--accent)] hover:text-[var(--accent)]"
+                  >
+                    + Eintrag hinzufügen
+                  </button>
+                )}
               </section>
             ) : (
-              <DisplaySettingsPanel settings={data.settings} setSettings={setSettings} />
+              <DisplaySettingsPanel
+                settings={data.settings}
+                setSettings={setSettings}
+                saveState={settingsSaveState}
+                saveError={settingsError}
+              />
             )}
           </div>
         </section>
       </div>
     </main>
+  )
+}
+
+function compareEntries(firstEntry, secondEntry, sortMode) {
+  if (sortMode === 'title_asc') {
+    return firstEntry.title.localeCompare(secondEntry.title)
+  }
+
+  if (sortMode === 'due_asc') {
+    return getSortDate(firstEntry).getTime() - getSortDate(secondEntry).getTime()
+  }
+
+  return getSortDate(secondEntry).getTime() - getSortDate(firstEntry).getTime()
+}
+
+function getSortDate(entry) {
+  const timestamp = Date.parse(`${entry.updatedAt || entry.createdAt}T00:00:00`)
+  if (Number.isFinite(timestamp)) return new Date(timestamp)
+  return new Date(0)
+}
+
+function EmptyEntriesState({ hasFilters, onResetFilters, onAddEntry }) {
+  return (
+    <div className="card grid gap-3 px-5 py-8 text-center shadow-none">
+      <p className="font-display text-sm font-medium text-[var(--text-primary)]">
+        {hasFilters ? 'Keine passenden Einträge' : 'Keine Einträge vorhanden'}
+      </p>
+      <p className="text-sm leading-6 text-[var(--text-secondary)]">
+        {hasFilters
+          ? 'Passe Suche, Status oder Sortierung an oder setze die Filter zurück.'
+          : 'Lege den ersten Eintrag an, um Inhalte in der Statusansicht sichtbar zu machen.'}
+      </p>
+      <div className="flex flex-wrap justify-center gap-2">
+        {hasFilters && (
+          <Button variant="ghost" size="sm" onClick={onResetFilters}>
+            Filter zurücksetzen
+          </Button>
+        )}
+        <Button size="sm" onClick={onAddEntry}>
+          Eintrag hinzufügen
+        </Button>
+      </div>
+    </div>
   )
 }
 
@@ -366,7 +623,7 @@ const displaySettingOptions = [
   ['showLiveAge', 'Live-Alter anzeigen'],
 ]
 
-function DisplaySettingsPanel({ settings, setSettings }) {
+function DisplaySettingsPanel({ settings, setSettings, saveState = 'idle', saveError = '' }) {
   function updateSetting(key, checked) {
     setSettings({
       ...settings,
@@ -379,9 +636,12 @@ function DisplaySettingsPanel({ settings, setSettings }) {
   return (
     <section className="card grid gap-4 px-4 py-4 shadow-none">
       <div>
-        <h2 className="font-display text-base font-medium text-[var(--text-primary)]">
-          Anzeigeoptionen
-        </h2>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2 className="font-display text-base font-medium text-[var(--text-primary)]">
+            Anzeigeoptionen
+          </h2>
+          <SettingsSaveStatus state={saveState} error={saveError} />
+        </div>
         <p className="mt-1 text-sm text-[var(--text-secondary)]">
           Sichtbarkeit einzelner Bereiche in der Statusansicht.
         </p>
@@ -412,6 +672,38 @@ function DisplaySettingsPanel({ settings, setSettings }) {
       </div>
       <StatusLegend />
     </section>
+  )
+}
+
+function SettingsSaveStatus({ state, error }) {
+  if (state === 'idle') return null
+
+  const meta = {
+    saving: {
+      label: 'Speichert...',
+      color: 'var(--accent)',
+      background: 'var(--color-accent-soft)',
+    },
+    saved: {
+      label: 'Gespeichert',
+      color: 'var(--success)',
+      background: 'var(--color-success-soft)',
+    },
+    error: {
+      label: error || 'Fehler beim Speichern',
+      color: 'var(--danger)',
+      background: 'var(--color-danger-soft)',
+    },
+  }[state]
+
+  return (
+    <span
+      className="badge normal-case"
+      style={{ color: meta.color, background: meta.background }}
+    >
+      {state === 'saving' && <span className="spinner h-3 w-3" aria-hidden="true" />}
+      {meta.label}
+    </span>
   )
 }
 
@@ -533,11 +825,14 @@ function LegendItem({ item }) {
   )
 }
 
-function SidebarItem({ active = false, children, onClick }) {
+function SidebarItem({ active = false, children, onClick, ariaLabel }) {
   return (
     <button
       type="button"
       onClick={onClick}
+      aria-pressed={active}
+      aria-current={active ? 'page' : undefined}
+      aria-label={ariaLabel}
       className={`rounded-[var(--radius-md)] px-3 py-2 text-left text-sm font-semibold ${
         active
           ? 'bg-[var(--bg-elevated)] text-[var(--text-primary)]'

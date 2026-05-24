@@ -42,6 +42,7 @@ const reminderIntervals = ['einmalig', 'monatlich wiederkehrend']
 const datePattern = /^\d{4}-\d{2}-\d{2}$/
 
 const defaultData = {
+  revision: 1,
   statusEntries: [
     {
       id: 'status-payment-documents',
@@ -226,8 +227,25 @@ function normalizeSettings(settings) {
   )
 }
 
+function validateSettings(settings) {
+  const errors = []
+
+  if (!isRecord(settings)) {
+    return ['settings must be an object.']
+  }
+
+  Object.keys(defaultSettings).forEach((key) => {
+    if (settings[key] !== undefined && typeof settings[key] !== 'boolean') {
+      errors.push(`settings.${key} must be a boolean.`)
+    }
+  })
+
+  return errors
+}
+
 function normalizeData(rawData) {
   return {
+    revision: Number.isInteger(rawData?.revision) && rawData.revision > 0 ? rawData.revision : 1,
     statusEntries: Array.isArray(rawData?.statusEntries)
       ? rawData.statusEntries.map(normalizeStatusEntry).filter(Boolean)
       : [],
@@ -265,17 +283,33 @@ function validateData(rawData) {
     })
   }
 
-  if (rawData.settings !== undefined && !isRecord(rawData.settings)) {
-    errors.push('settings must be an object.')
-  } else if (isRecord(rawData.settings)) {
-    Object.keys(defaultSettings).forEach((key) => {
-      if (rawData.settings[key] !== undefined && typeof rawData.settings[key] !== 'boolean') {
-        errors.push(`settings.${key} must be a boolean.`)
-      }
-    })
+  if (rawData.settings !== undefined) {
+    errors.push(...validateSettings(rawData.settings))
   }
 
   return { valid: errors.length === 0, errors }
+}
+
+function canWrite(env) {
+  return env.ADMIN_WRITE_ENABLED === 'true' || env.APP_TARGET === 'admin' || env.VITE_APP_TARGET === 'admin'
+}
+
+function validateRevision(rawData, currentData) {
+  if (!Number.isInteger(rawData?.revision)) {
+    return {
+      error: 'Missing revision.',
+      status: 409,
+    }
+  }
+
+  if (rawData.revision !== currentData.revision) {
+    return {
+      error: 'Status data was changed elsewhere. Please reload before saving.',
+      status: 409,
+    }
+  }
+
+  return null
 }
 
 async function readJson(request) {
@@ -310,8 +344,7 @@ export async function onRequestGet({ env }) {
 }
 
 export async function onRequestPut({ request, env }) {
-  const isAdminTarget = env.APP_TARGET === 'admin' || env.VITE_APP_TARGET === 'admin'
-  if (!isAdminTarget) {
+  if (!canWrite(env)) {
     return jsonResponse({ error: 'Writes are only allowed from the admin app.' }, { status: 403 })
   }
 
@@ -332,7 +365,63 @@ export async function onRequestPut({ request, env }) {
     )
   }
 
-  const nextData = normalizeData(parsed.data)
+  const currentData = await readData(env)
+  if (currentData.error) {
+    return jsonResponse({ error: currentData.error }, { status: 500 })
+  }
+
+  const revisionError = validateRevision(parsed.data, currentData)
+  if (revisionError) {
+    return jsonResponse({ error: revisionError.error }, { status: revisionError.status })
+  }
+
+  const nextData = {
+    ...normalizeData(parsed.data),
+    revision: currentData.revision + 1,
+  }
+  await env.STATUS_STORE.put(STORE_KEY, JSON.stringify(nextData))
+
+  return jsonResponse(nextData)
+}
+
+export async function onRequestPatch({ request, env }) {
+  if (!canWrite(env)) {
+    return jsonResponse({ error: 'Writes are only allowed from the admin app.' }, { status: 403 })
+  }
+
+  if (!env.STATUS_STORE) {
+    return jsonResponse({ error: 'Missing STATUS_STORE KV binding.' }, { status: 500 })
+  }
+
+  const parsed = await readJson(request)
+  if (parsed.error) {
+    return jsonResponse({ error: parsed.error }, { status: 400 })
+  }
+
+  const settings = parsed.data?.settings
+  const errors = validateSettings(settings)
+  if (errors.length > 0) {
+    return jsonResponse(
+      { error: 'Invalid status data.', details: errors },
+      { status: 400 },
+    )
+  }
+
+  const currentData = await readData(env)
+  if (currentData.error) {
+    return jsonResponse({ error: currentData.error }, { status: 500 })
+  }
+
+  const revisionError = validateRevision(parsed.data, currentData)
+  if (revisionError) {
+    return jsonResponse({ error: revisionError.error }, { status: revisionError.status })
+  }
+
+  const nextData = {
+    ...currentData,
+    revision: currentData.revision + 1,
+    settings: normalizeSettings({ ...currentData.settings, ...settings }),
+  }
   await env.STATUS_STORE.put(STORE_KEY, JSON.stringify(nextData))
 
   return jsonResponse(nextData)

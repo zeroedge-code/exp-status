@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import { Button } from './Button.jsx'
 import { categories, ownerOptions, priorityOptions, statusOptions, typeOptions } from '../statusData.js'
 
@@ -8,12 +8,17 @@ export function AdminRow({
   onSave,
   onDelete,
   onCancelNew,
+  onEdit,
   flash = '',
   error = '',
+  saveState = 'idle',
 }) {
   const [draft, setDraft] = useState(entry)
   const [confirmingDelete, setConfirmingDelete] = useState(false)
   const nameRef = useRef(null)
+  const statusId = useId()
+  const errorId = useId()
+  const describedBy = [statusId, error ? errorId : null].filter(Boolean).join(' ')
 
   useEffect(() => {
     if (isNew) nameRef.current?.focus()
@@ -27,6 +32,7 @@ export function AdminRow({
   const canSave = draft.title.trim() && (hasChanges || isNew)
 
   function updateField(field, value) {
+    onEdit?.()
     setDraft((currentDraft) => ({
       ...currentDraft,
       [field]: value,
@@ -51,6 +57,7 @@ export function AdminRow({
 
   return (
     <article
+      aria-busy={saveState === 'saving'}
       className={`card ${flash === 'success' ? 'save-flash-success' : ''} ${flash === 'error' ? 'save-flash-error' : ''} grid gap-3 px-3 py-3 shadow-none`}
     >
       <h3 className="sr-only">{draft.title || 'Neuer Eintrag'}</h3>
@@ -63,6 +70,8 @@ export function AdminRow({
             onChange={(event) => updateField('title', event.target.value)}
             className="field"
             placeholder="Neuer Eintrag"
+            aria-invalid={Boolean(error)}
+            aria-describedby={describedBy || undefined}
           />
         </label>
         <label className="grid gap-1.5">
@@ -71,6 +80,8 @@ export function AdminRow({
             value={draft.status}
             onChange={(event) => updateField('status', event.target.value)}
             className="field select-field"
+            aria-invalid={Boolean(error)}
+            aria-describedby={describedBy || undefined}
           >
             {statusOptions.map((status) => (
               <option key={status}>{status}</option>
@@ -84,47 +95,93 @@ export function AdminRow({
             onChange={(event) => updateField('description', event.target.value)}
             className="field"
             placeholder="Kurzer Statushinweis"
+            aria-invalid={Boolean(error)}
+            aria-describedby={describedBy || undefined}
           />
         </label>
-        <div className="flex items-end gap-2 lg:pt-[1.4rem]">
+        <div className="flex flex-col items-start gap-2 lg:pt-[1.4rem]">
           {hasChanges && (
-            <span className="mt-3 h-2 w-2 rounded-full bg-[var(--warning)]" aria-label="Ungespeicherte Änderungen" />
+            <span
+              className="mt-3 h-2 w-2 rounded-full bg-[var(--warning)]"
+              aria-label="Ungespeicherte Änderungen"
+            />
           )}
-          <Button size="sm" disabled={!canSave} onClick={handleSave}>
-            Speichern
-          </Button>
-          {isNew ? (
-            <Button size="sm" variant="ghost" onClick={onCancelNew} aria-label="Neue Zeile verwerfen">
-              Abbrechen
-            </Button>
-          ) : confirmingDelete ? (
-            <div className="inline-flex items-center gap-1.5">
-              <span className="label text-[var(--danger)]">Sicher?</span>
-              <Button size="sm" variant="danger" onClick={onDelete}>
-                Löschen bestätigen
-              </Button>
-              <Button size="sm" variant="ghost" onClick={() => setConfirmingDelete(false)}>
-                Nein
-              </Button>
-            </div>
-          ) : (
+          <div className="flex flex-wrap items-center gap-2">
             <Button
               size="sm"
-              variant="ghost"
-              onClick={() => setConfirmingDelete(true)}
-              aria-label="Löschen"
+              disabled={!canSave}
+              loading={saveState === 'saving'}
+              onClick={handleSave}
+              aria-describedby={statusId}
             >
-              <TrashIcon />
+              Speichern
             </Button>
-          )}
+            {isNew ? (
+              <Button size="sm" variant="ghost" onClick={onCancelNew} aria-label="Neue Zeile verwerfen">
+                Abbrechen
+              </Button>
+            ) : confirmingDelete ? (
+              <div className="inline-flex items-center gap-1.5">
+                <span className="label text-[var(--danger)]">Sicher?</span>
+                <Button size="sm" variant="danger" onClick={onDelete}>
+                  Löschen bestätigen
+                </Button>
+                <Button size="sm" variant="ghost" onClick={() => setConfirmingDelete(false)}>
+                  Nein
+                </Button>
+              </div>
+            ) : (
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => setConfirmingDelete(true)}
+                aria-label="Löschen"
+              >
+                <TrashIcon />
+              </Button>
+            )}
+          </div>
+          <p id={statusId} className="min-h-4 text-xs text-[var(--text-secondary)]" aria-live="polite">
+            {saveState === 'saving'
+              ? 'Speichert...'
+              : saveState === 'saved'
+                ? 'Gespeichert'
+                : saveState === 'error'
+                  ? 'Speichern fehlgeschlagen'
+                  : hasChanges
+                    ? 'Ungespeicherte Änderungen'
+                    : ''}
+          </p>
         </div>
       </div>
 
       <div className="grid gap-3 border-t border-[var(--border)] pt-3 md:grid-cols-5">
-        <CompactSelect label="Kategorie" value={draft.category} options={categories} onChange={(value) => updateField('category', value)} />
-        <CompactSelect label="Typ" value={draft.type} options={typeOptions} format={formatType} onChange={(value) => updateField('type', value)} />
-        <CompactSelect label="Verantwortung" value={draft.owner} options={ownerOptions} onChange={(value) => updateField('owner', value)} />
-        <CompactSelect label="Priorität" value={draft.priority} options={['', ...priorityOptions]} format={(value) => value || 'Keine'} onChange={(value) => updateField('priority', value)} />
+        <CompactSelect
+          label="Kategorie"
+          value={draft.category}
+          options={categories}
+          onChange={(value) => updateField('category', value)}
+        />
+        <CompactSelect
+          label="Typ"
+          value={draft.type}
+          options={typeOptions}
+          format={formatType}
+          onChange={(value) => updateField('type', value)}
+        />
+        <CompactSelect
+          label="Verantwortung"
+          value={draft.owner}
+          options={ownerOptions}
+          onChange={(value) => updateField('owner', value)}
+        />
+        <CompactSelect
+          label="Priorität"
+          value={draft.priority}
+          options={['', ...priorityOptions]}
+          format={(value) => value || 'Keine'}
+          onChange={(value) => updateField('priority', value)}
+        />
         <label className="grid gap-1.5">
           <span className="label">Fällig</span>
           <input
@@ -132,11 +189,17 @@ export function AdminRow({
             value={draft.dueDate}
             onChange={(event) => updateField('dueDate', event.target.value)}
             className="field"
+            aria-invalid={Boolean(error)}
+            aria-describedby={describedBy || undefined}
           />
         </label>
       </div>
 
-      {error && <p className="text-sm text-[var(--danger)]">{error}</p>}
+      {error && (
+        <p id={errorId} className="text-sm text-[var(--danger)]" aria-live="polite">
+          {error}
+        </p>
+      )}
     </article>
   )
 }

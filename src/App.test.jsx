@@ -26,9 +26,24 @@ const initialApiData = {
 function mockStatusApi(data = initialApiData) {
   vi.spyOn(globalThis, 'fetch').mockImplementation(async (_url, options = {}) => {
     if (options.method === 'PUT') {
+      const body = JSON.parse(options.body)
       return {
         ok: true,
-        json: async () => JSON.parse(options.body),
+        json: async () => ({ ...body, revision: body.revision + 1 }),
+      }
+    }
+    if (options.method === 'PATCH') {
+      const body = JSON.parse(options.body)
+      return {
+        ok: true,
+        json: async () => ({
+          ...data,
+          revision: body.revision + 1,
+          settings: {
+            ...data.settings,
+            ...body.settings,
+          },
+        }),
       }
     }
 
@@ -41,7 +56,7 @@ function mockStatusApi(data = initialApiData) {
 
 function mockFailingSaveApi(data = initialApiData) {
   vi.spyOn(globalThis, 'fetch').mockImplementation(async (_url, options = {}) => {
-    if (options.method === 'PUT') {
+    if (options.method === 'PUT' || options.method === 'PATCH') {
       return {
         ok: false,
         json: async () => ({ error: 'Statusdaten konnten nicht gespeichert werden.' }),
@@ -117,10 +132,11 @@ test('saves public display settings from the intern dashboard', async () => {
   await user.click(screen.getByLabelText(/Nächste Frist/))
 
   await waitFor(() => {
-    const saveCall = globalThis.fetch.mock.calls.find(([, options = {}]) => options.method === 'PUT')
+    const saveCall = globalThis.fetch.mock.calls.find(([, options = {}]) => options.method === 'PATCH')
     expect(saveCall).toBeTruthy()
     expect(JSON.parse(saveCall[1].body).settings.showNextDue).toBe(false)
   })
+  expect(await screen.findAllByText('Gespeichert')).toHaveLength(2)
 })
 
 test('switches between admin entries and display settings panels', async () => {
@@ -170,6 +186,50 @@ test('edits an existing status entry from its dashboard row', async () => {
       status: 'Erledigt',
     })
   })
+})
+
+test('filters status entries by search text', async () => {
+  vi.restoreAllMocks()
+  vi.spyOn(globalThis.crypto, 'randomUUID').mockReturnValue('new-entry-id')
+  mockStatusApi({
+    statusEntries: [
+      initialApiData.statusEntries[0],
+      {
+        id: 'entry-two',
+        category: 'Marketing & Sichtbarkeit',
+        title: 'Kampagnenmaterial',
+        status: 'Neu',
+        createdAt: '2026-05-21',
+        updatedAt: '2026-05-21',
+        description: 'Freigabe steht noch aus.',
+      },
+    ],
+    tasks: [],
+  })
+
+  const user = userEvent.setup()
+
+  await renderLoadedAdmin()
+
+  await user.type(screen.getByPlaceholderText('Titel, Kategorie oder Hinweis'), 'Kampagnen')
+
+  expect(screen.getByText('1 von 2 Einträgen')).toBeInTheDocument()
+  expect(screen.getByRole('heading', { name: 'Kampagnenmaterial' })).toBeInTheDocument()
+  expect(
+    screen.queryByRole('heading', { name: 'API Zahlungsunterlagen' }),
+  ).not.toBeInTheDocument()
+})
+
+test('shows the empty state when filters remove all entries', async () => {
+  const user = userEvent.setup()
+
+  await renderLoadedAdmin()
+
+  await user.type(screen.getByPlaceholderText('Titel, Kategorie oder Hinweis'), 'nichts-passendes')
+
+  expect(screen.getByText('Keine passenden Einträge')).toBeInTheDocument()
+  await user.click(screen.getAllByRole('button', { name: 'Filter zurücksetzen' })[0])
+  expect(screen.getByRole('heading', { name: 'API Zahlungsunterlagen' })).toBeInTheDocument()
 })
 
 test('deletes a status entry after confirmation', async () => {

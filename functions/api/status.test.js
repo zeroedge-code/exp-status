@@ -1,5 +1,5 @@
 import { expect, test } from 'vitest'
-import { onRequestGet, onRequestPut } from './status.js'
+import { onRequestGet, onRequestPatch, onRequestPut } from './status.js'
 
 function createStore(initialValue) {
   const values = new Map()
@@ -21,8 +21,12 @@ function createStore(initialValue) {
 }
 
 function jsonRequest(body) {
+  return methodRequest('PUT', body)
+}
+
+function methodRequest(method, body) {
   return new Request('https://example.com/api/status', {
-    method: 'PUT',
+    method,
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   })
@@ -30,6 +34,7 @@ function jsonRequest(body) {
 
 function validData() {
   return {
+    revision: 1,
     statusEntries: [
       {
         id: 'status-one',
@@ -66,6 +71,7 @@ test('GET returns default data and seeds KV when empty', async () => {
   const body = await response.json()
 
   expect(response.status).toBe(200)
+  expect(body.revision).toBe(1)
   expect(body.statusEntries).toHaveLength(3)
   expect(body.settings.showNextDue).toBe(true)
   expect(body.tasks).toHaveLength(0)
@@ -145,10 +151,12 @@ test('PUT stores normalized valid data', async () => {
   const stored = JSON.parse(store.values.get('status-data'))
 
   expect(response.status).toBe(200)
+  expect(body.revision).toBe(2)
   expect(body.statusEntries[0].category).toBe('Auszahlungen & Vergütung')
   expect(body.statusEntries[0].status).toBe('Offen')
   expect(body.statusEntries[0].createdAt).toBe('2026-05-20')
   expect(stored.statusEntries[0].category).toBe('Auszahlungen & Vergütung')
+  expect(stored.revision).toBe(2)
   expect(stored.settings.showHeaderSummary).toBe(true)
   expect(stored.settings.showNextDue).toBe(true)
   expect(stored.settings.showLiveStatusPill).toBe(true)
@@ -198,6 +206,7 @@ test('PUT stores normalized display settings', async () => {
   const body = await response.json()
 
   expect(response.status).toBe(200)
+  expect(body.revision).toBe(2)
   expect(body.settings).toEqual(data.settings)
 })
 
@@ -298,4 +307,90 @@ test('PUT preserves urgent status', async () => {
 
   expect(response.status).toBe(200)
   expect(body.statusEntries[0].status).toBe('Dringend')
+})
+
+test('PATCH stores display settings without replacing entries', async () => {
+  const store = createStore(validData())
+  const response = await onRequestPatch({
+    request: methodRequest('PATCH', {
+      revision: 1,
+      settings: {
+        showFilters: false,
+        showLiveStatusPill: false,
+      },
+    }),
+    env: { APP_TARGET: 'admin', STATUS_STORE: store },
+  })
+  const body = await response.json()
+  const stored = JSON.parse(store.values.get('status-data'))
+
+  expect(response.status).toBe(200)
+  expect(body.revision).toBe(2)
+  expect(body.statusEntries).toHaveLength(1)
+  expect(body.settings.showFilters).toBe(false)
+  expect(body.settings.showLiveStatusPill).toBe(false)
+  expect(body.settings.showLiveAge).toBe(false)
+  expect(stored.statusEntries).toHaveLength(1)
+  expect(stored.revision).toBe(2)
+})
+
+test('PATCH rejects invalid display settings', async () => {
+  const response = await onRequestPatch({
+    request: methodRequest('PATCH', {
+      revision: 1,
+      settings: {
+        showFilters: 'no',
+      },
+    }),
+    env: { APP_TARGET: 'admin', STATUS_STORE: createStore(validData()) },
+  })
+  const body = await response.json()
+
+  expect(response.status).toBe(400)
+  expect(body.details).toContain('settings.showFilters must be a boolean.')
+})
+
+test('PUT rejects stale revisions', async () => {
+  const data = validData()
+  data.revision = 1
+
+  const response = await onRequestPut({
+    request: jsonRequest(data),
+    env: {
+      ADMIN_WRITE_ENABLED: 'true',
+      STATUS_STORE: createStore({ ...validData(), revision: 2 }),
+    },
+  })
+  const body = await response.json()
+
+  expect(response.status).toBe(409)
+  expect(body.error).toBe('Status data was changed elsewhere. Please reload before saving.')
+})
+
+test('PATCH rejects stale revisions', async () => {
+  const response = await onRequestPatch({
+    request: methodRequest('PATCH', {
+      revision: 1,
+      settings: {
+        showFilters: false,
+      },
+    }),
+    env: {
+      ADMIN_WRITE_ENABLED: 'true',
+      STATUS_STORE: createStore({ ...validData(), revision: 2 }),
+    },
+  })
+  const body = await response.json()
+
+  expect(response.status).toBe(409)
+  expect(body.error).toBe('Status data was changed elsewhere. Please reload before saving.')
+})
+
+test('PUT accepts writes with explicit admin write flag', async () => {
+  const response = await onRequestPut({
+    request: jsonRequest(validData()),
+    env: { ADMIN_WRITE_ENABLED: 'true', STATUS_STORE: createStore() },
+  })
+
+  expect(response.status).toBe(200)
 })
