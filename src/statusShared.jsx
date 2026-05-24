@@ -11,17 +11,17 @@ const statusConfig = {
   Offen: {
     key: 'busy',
     filterKey: 'offen',
-    label: 'BESCHÄFTIGT',
+    label: 'IN BEARBEITUNG',
   },
   Neu: {
     key: 'available',
     filterKey: 'neu',
-    label: 'VERFÜGBAR',
+    label: 'NEU',
   },
   Erledigt: {
     key: 'away',
     filterKey: 'erledigt',
-    label: 'ABWESEND',
+    label: 'ERLEDIGT',
   },
 }
 
@@ -316,7 +316,7 @@ function getBadgeStatus(status) {
 }
 
 function getBadgeLabel(status) {
-  return statusConfig[normalizeKnownStatus(status)]?.label || 'OFFLINE'
+  return statusConfig[normalizeKnownStatus(status)]?.label || 'UNBEKANNT'
 }
 
 function getOwner(entry) {

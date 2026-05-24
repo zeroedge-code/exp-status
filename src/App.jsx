@@ -410,7 +410,126 @@ function DisplaySettingsPanel({ settings, setSettings }) {
           )
         })}
       </div>
+      <StatusLegend />
     </section>
+  )
+}
+
+const legendGroups = [
+  {
+    title: 'Statusfarben',
+    items: [
+      {
+        label: 'Neu',
+        description: 'Frisch angelegte Themen, die noch eingeordnet werden',
+        color: 'var(--success)',
+        background: 'var(--color-success-soft)',
+        ring: true,
+      },
+      {
+        label: 'In Bearbeitung',
+        description: 'Aktive Aufgaben oder Themen mit ausstehender Klärung',
+        color: 'var(--warning)',
+        background: 'var(--color-warning-soft)',
+      },
+      {
+        label: 'Erledigt',
+        description: 'Abgeschlossene Themen ohne weiteren Handlungsbedarf',
+        color: 'var(--text-muted)',
+        background: 'var(--bg-elevated)',
+      },
+      {
+        label: 'Unbekannt',
+        description: 'Fallback, falls ein Status nicht zugeordnet werden kann',
+        color: 'var(--danger)',
+        background: 'var(--color-danger-soft)',
+      },
+    ],
+  },
+  {
+    title: 'Admin-Hinweise',
+    items: [
+      {
+        label: 'Ungespeichert',
+        description: 'Gelber Punkt an einer Zeile mit lokalen Änderungen',
+        color: 'var(--warning)',
+        background: 'var(--color-warning-soft)',
+      },
+      {
+        label: 'Gespeichert',
+        description: 'Grüner Rahmen nach erfolgreichem Speichern',
+        color: 'var(--success)',
+        background: 'var(--color-success-soft)',
+      },
+      {
+        label: 'Fehler',
+        description: 'Roter Rahmen und Meldung bei fehlgeschlagenem Speichern',
+        color: 'var(--danger)',
+        background: 'var(--color-danger-soft)',
+      },
+      {
+        label: 'Aktuell-Pill',
+        description: 'Live-Indikator im Status-Header, im Admin ausblendbar',
+        color: 'var(--success)',
+        background: '#f0fdf4',
+        ring: true,
+      },
+    ],
+  },
+]
+
+function StatusLegend() {
+  return (
+    <div className="border-t border-[var(--border)] pt-4">
+      <div className="mb-3">
+        <h3 className="font-display text-sm font-medium text-[var(--text-primary)]">
+          Legende
+        </h3>
+        <p className="mt-1 text-sm text-[var(--text-secondary)]">
+          Bedeutung der Farben und Zustände in Statusansicht und Admin.
+        </p>
+      </div>
+      <div className="grid gap-3 lg:grid-cols-2">
+        {legendGroups.map((group) => (
+          <div
+            key={group.title}
+            className="rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--bg-base)] p-3"
+          >
+            <p className="label mb-3">{group.title}</p>
+            <div className="grid gap-2">
+              {group.items.map((item) => (
+                <LegendItem key={item.label} item={item} />
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function LegendItem({ item }) {
+  return (
+    <div className="flex items-start gap-3 rounded-[var(--radius-sm)] bg-[var(--bg-surface)] px-3 py-2">
+      <span
+        className={`mt-1 h-2.5 w-2.5 shrink-0 rounded-full ${item.ring ? 'status-dot-available' : ''}`}
+        style={{ position: 'relative', background: item.color }}
+        aria-hidden="true"
+      />
+      <div className="min-w-0">
+        <div className="flex flex-wrap items-center gap-2">
+          <span
+            className="badge"
+            style={{ color: item.color, background: item.background }}
+          >
+            {item.label}
+          </span>
+        </div>
+        <p className="mt-1 text-sm leading-5 text-[var(--text-secondary)]">
+          {item.description}
+        </p>
+      </div>
+    </div>
   )
 }
 
