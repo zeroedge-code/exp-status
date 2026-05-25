@@ -320,6 +320,53 @@ textarea:focus-visible {
   padding: 0.48rem 0.7rem;
 }
 
+.mock-toggle-bar {
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-surface);
+  padding: 0.5rem 1rem;
+}
+
+.mock-toggle-inner {
+  display: flex;
+  width: min(100%, 58rem);
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  margin: 0 auto;
+  color: var(--text-secondary);
+  font-size: 0.78rem;
+}
+
+.mock-toggle-actions {
+  display: inline-flex;
+  gap: 0.125rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-base);
+  padding: 0.125rem;
+}
+
+.mock-toggle-actions button {
+  border: 0;
+  border-radius: calc(var(--radius-sm) - 1px);
+  background: transparent;
+  color: var(--text-secondary);
+  padding: 0.35rem 0.58rem;
+  font-size: 0.74rem;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.mock-toggle-actions button:hover {
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+}
+
+.mock-toggle-actions .mock-toggle-active {
+  background: var(--accent);
+  color: #ffffff;
+}
+
 @media (max-width: 640px) {
   .status-header-top {
     align-items: flex-start;

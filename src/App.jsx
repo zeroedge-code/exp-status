@@ -50,9 +50,9 @@ function normalizeData(rawData) {
   }
 }
 
-async function fetchData() {
-  if (shouldUseMockStatusData()) {
-    const { mockStatusData } = await import(/* @vite-ignore */ './statusMockData.js')
+async function fetchData(useMockData = false) {
+  if (useMockData) {
+    const { mockStatusData } = await import('./statusMockData.js')
     return normalizeData({
       ...initialData,
       statusEntries: mockStatusData.statusEntries,
@@ -70,14 +70,6 @@ async function fetchData() {
   })
   if (!response.ok) throw new Error('Statusdaten konnten nicht geladen werden.')
   return normalizeData(await response.json())
-}
-
-function shouldUseMockStatusData() {
-  return (
-    import.meta.env.DEV &&
-    import.meta.env.MODE !== 'test' &&
-    new URLSearchParams(window.location.search).has('mock')
-  )
 }
 
 async function saveData(nextData) {
@@ -146,6 +138,7 @@ function App({ adminOnly = false }) {
   const [syncState, setSyncState] = useState('loading')
   const [syncError, setSyncError] = useState('')
   const [path, setPath] = useState(adminOnly ? '/intern' : window.location.pathname)
+  const [useMockData, setUseMockData] = useState(() => shouldUseMockStatusData())
   const saveRequestId = useRef(0)
 
   useEffect(() => {
@@ -154,7 +147,7 @@ function App({ adminOnly = false }) {
 
   useEffect(() => {
     let active = true
-    fetchData()
+    fetchData(useMockData)
       .then((remoteData) => {
         if (!active) return
         setData(remoteData)
@@ -169,7 +162,7 @@ function App({ adminOnly = false }) {
     return () => {
       active = false
     }
-  }, [])
+  }, [useMockData])
 
   useEffect(() => {
     const onPopState = () => setPath(adminOnly ? '/intern' : window.location.pathname)
@@ -239,6 +232,12 @@ function App({ adminOnly = false }) {
 
   const isIntern = adminOnly || path === '/intern'
 
+  function toggleMockData(enabled) {
+    setSyncState('loading')
+    setUseMockData(enabled)
+    updateMockQuery(enabled)
+  }
+
   return (
     <div className="min-h-screen">
       <SyncBanner syncState={syncState} syncError={syncError} adminOnly={adminOnly} />
@@ -251,12 +250,66 @@ function App({ adminOnly = false }) {
           onOpenStatus={adminOnly ? null : () => navigate('/status')}
         />
       ) : (
-        <StatusPage
-          statusEntries={data.statusEntries}
-          settings={data.settings}
-          loading={syncState === 'loading'}
-        />
+        <>
+          {shouldShowMockToggle() && (
+            <MockDataToggle enabled={useMockData} onChange={toggleMockData} />
+          )}
+          <StatusPage
+            statusEntries={data.statusEntries}
+            settings={data.settings}
+            loading={syncState === 'loading'}
+          />
+        </>
       )}
+    </div>
+  )
+}
+
+function shouldShowMockToggle() {
+  const params = new URLSearchParams(window.location.search)
+  return params.has('mockToggle') || params.has('mock')
+}
+
+function shouldUseMockStatusData() {
+  const params = new URLSearchParams(window.location.search)
+  return params.get('mock') === '1' || params.get('mock') === 'true'
+}
+
+function updateMockQuery(enabled) {
+  const url = new URL(window.location.href)
+  url.searchParams.set('mockToggle', '1')
+  if (enabled) {
+    url.searchParams.set('mock', '1')
+  } else {
+    url.searchParams.delete('mock')
+  }
+  window.history.replaceState({}, '', url)
+}
+
+function MockDataToggle({ enabled, onChange }) {
+  return (
+    <div className="mock-toggle-bar">
+      <div className="mock-toggle-inner">
+        <span>Demo-Daten</span>
+        <div className="mock-toggle-actions" aria-label="Datenquelle">
+          <button
+            type="button"
+            aria-pressed={!enabled}
+            className={!enabled ? 'mock-toggle-active' : ''}
+            onClick={() => onChange(false)}
+          >
+            Live
+          </button>
+          <button
+            type="button"
+            aria-pressed={enabled}
+            className={enabled ? 'mock-toggle-active' : ''}
+            onClick={() => onChange(true)}
+          >
+            Demo
+          </button>
+        </div>
+      </div>
     </div>
   )
 }

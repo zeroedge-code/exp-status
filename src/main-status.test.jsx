@@ -1,9 +1,11 @@
 import { render, screen, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { afterEach, expect, test, vi } from 'vitest'
 import { StatusApp } from './main-status.jsx'
 
 afterEach(() => {
   vi.restoreAllMocks()
+  window.history.replaceState({}, '', '/')
 })
 
 test('shows status entries loaded from the API', async () => {
@@ -116,6 +118,39 @@ test('renders completed entries with reduced emphasis', async () => {
 
   await screen.findByRole('heading', { name: 'Abgeschlossenes Thema' })
   expect(screen.getByRole('article', { name: 'Abgeschlossenes Thema' })).toHaveClass('status-card-done')
+})
+
+test('toggles production mock data when enabled by URL', async () => {
+  const user = userEvent.setup()
+  window.history.replaceState({}, '', '/status?mockToggle=1')
+  vi.spyOn(globalThis, 'fetch').mockResolvedValue({
+    ok: true,
+    json: async () => ({
+      statusEntries: [
+        {
+          id: 'live-entry',
+          category: 'Weitere Themen',
+          title: 'Live-Eintrag',
+          status: 'Offen',
+          createdAt: '2026-05-20',
+          updatedAt: '2026-05-20',
+          dueDate: '2026-05-27',
+          description: 'Live-Daten sind aktiv.',
+        },
+      ],
+    }),
+  })
+
+  render(<StatusApp />)
+
+  expect(await screen.findByRole('heading', { name: 'Live-Eintrag' })).toBeInTheDocument()
+  expect(screen.getByRole('button', { name: 'Live' })).toHaveAttribute('aria-pressed', 'true')
+
+  await user.click(screen.getByRole('button', { name: 'Demo' }))
+
+  expect(await screen.findByRole('heading', { name: 'Auszahlungslauf Mai final prüfen' })).toBeInTheDocument()
+  expect(screen.getByText('12 von 12 Einträgen angezeigt')).toBeInTheDocument()
+  expect(screen.getByRole('button', { name: 'Demo' })).toHaveAttribute('aria-pressed', 'true')
 })
 
 test('keeps the fallback status view visible and shows an error when loading fails', async () => {

@@ -11,9 +11,9 @@ import {
 
 const initialStatusEntries = createInitialStatusEntries()
 
-async function fetchStatusData() {
-  if (shouldUseMockStatusData()) {
-    const { mockStatusData } = await import(/* @vite-ignore */ './statusMockData.js')
+async function fetchStatusData(useMockData = false) {
+  if (useMockData) {
+    const { mockStatusData } = await import('./statusMockData.js')
     return {
       statusEntries: normalizeStatusEntries(mockStatusData, initialStatusEntries),
       settings: normalizeDisplaySettings(mockStatusData),
@@ -31,15 +31,8 @@ async function fetchStatusData() {
   }
 }
 
-function shouldUseMockStatusData() {
-  return (
-    import.meta.env.DEV &&
-    import.meta.env.MODE !== 'test' &&
-    new URLSearchParams(window.location.search).has('mock')
-  )
-}
-
 export function StatusApp() {
+  const [useMockData, setUseMockData] = useState(() => shouldUseMockStatusData())
   const [statusEntries, setStatusEntries] = useState(initialStatusEntries)
   const [settings, setSettings] = useState(defaultDisplaySettings)
   const [loadError, setLoadError] = useState('')
@@ -47,7 +40,7 @@ export function StatusApp() {
 
   useEffect(() => {
     let active = true
-    fetchStatusData()
+    fetchStatusData(useMockData)
       .then((data) => {
         if (!active) return
         setStatusEntries(data.statusEntries)
@@ -63,16 +56,74 @@ export function StatusApp() {
     return () => {
       active = false
     }
-  }, [])
+  }, [useMockData])
+
+  function toggleMockData(enabled) {
+    setLoading(true)
+    setUseMockData(enabled)
+    updateMockQuery(enabled)
+  }
 
   return (
     <div className="min-h-screen">
+      {shouldShowMockToggle() && (
+        <MockDataToggle enabled={useMockData} onChange={toggleMockData} />
+      )}
       {loadError && (
         <div className="border-b border-[var(--danger)] bg-[var(--color-danger-soft)] px-4 py-3 text-sm text-[var(--color-danger-text)]">
           <div className="mx-auto max-w-2xl">{loadError}</div>
         </div>
       )}
       <StatusPage statusEntries={statusEntries} settings={settings} loading={loading} />
+    </div>
+  )
+}
+
+function shouldShowMockToggle() {
+  const params = new URLSearchParams(window.location.search)
+  return params.has('mockToggle') || params.has('mock')
+}
+
+function shouldUseMockStatusData() {
+  const params = new URLSearchParams(window.location.search)
+  return params.get('mock') === '1' || params.get('mock') === 'true'
+}
+
+function updateMockQuery(enabled) {
+  const url = new URL(window.location.href)
+  url.searchParams.set('mockToggle', '1')
+  if (enabled) {
+    url.searchParams.set('mock', '1')
+  } else {
+    url.searchParams.delete('mock')
+  }
+  window.history.replaceState({}, '', url)
+}
+
+function MockDataToggle({ enabled, onChange }) {
+  return (
+    <div className="mock-toggle-bar">
+      <div className="mock-toggle-inner">
+        <span>Demo-Daten</span>
+        <div className="mock-toggle-actions" aria-label="Datenquelle">
+          <button
+            type="button"
+            aria-pressed={!enabled}
+            className={!enabled ? 'mock-toggle-active' : ''}
+            onClick={() => onChange(false)}
+          >
+            Live
+          </button>
+          <button
+            type="button"
+            aria-pressed={enabled}
+            className={enabled ? 'mock-toggle-active' : ''}
+            onClick={() => onChange(true)}
+          >
+            Demo
+          </button>
+        </div>
+      </div>
     </div>
   )
 }
