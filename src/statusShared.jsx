@@ -34,7 +34,6 @@ export function StatusPage({
   statusEntries,
   settings = defaultDisplaySettings,
   loading = false,
-  intro = 'Alle aktuellen Themen, Aufgaben und Infos auf einen Blick.',
 }) {
   const displaySettings = { ...defaultDisplaySettings, ...settings }
   const [activeFilter, setActiveFilter] = useState('alle')
@@ -135,8 +134,6 @@ export function StatusPage({
               </div>
             </>
           )}
-          <div hidden>{intro}</div>
-          <div hidden>{latestUpdate ? formatDate(toDateInputValue(latestUpdate)) : 'Wird geladen'}</div>
         </header>
 
         {displaySettings.showFilters && (

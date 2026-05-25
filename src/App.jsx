@@ -9,7 +9,9 @@ import {
   normalizeStatusEntries,
 } from './statusData.js'
 
-const today = new Date().toISOString().slice(0, 10)
+function getToday() {
+  return new Date().toISOString().slice(0, 10)
+}
 
 const emptyStatusEntry = {
   category: 'Auszahlungen & Vergütung',
@@ -19,9 +21,9 @@ const emptyStatusEntry = {
   type: 'info',
   priority: '',
   showProgress: false,
-  createdAt: today,
-  updatedAt: today,
-  dueDate: today,
+  createdAt: '',
+  updatedAt: '',
+  dueDate: '',
   description: '',
 }
 
@@ -379,11 +381,12 @@ function AdminDashboard({ data, updateData, updateSettings, syncError, onOpenSta
 
   async function saveEntry(nextEntry) {
     const isNew = !data.statusEntries.some((entry) => entry.id === nextEntry.id)
+    const now = getToday()
     const savedEntry = {
       ...nextEntry,
       id: nextEntry.id || crypto.randomUUID(),
-      createdAt: nextEntry.createdAt || today,
-      updatedAt: nextEntry.updatedAt || today,
+      createdAt: nextEntry.createdAt || now,
+      updatedAt: now,
     }
     setRowSaveState(savedEntry.id, 'saving')
     setRowErrors((current) => ({ ...current, [savedEntry.id]: '' }))
@@ -415,7 +418,8 @@ function AdminDashboard({ data, updateData, updateSettings, syncError, onOpenSta
   }
 
   function handleAddEntry() {
-    setNewEntry({ ...emptyStatusEntry, id: crypto.randomUUID(), createdAt: today, updatedAt: today })
+    const now = getToday()
+    setNewEntry({ ...emptyStatusEntry, id: crypto.randomUUID(), createdAt: now, updatedAt: now, dueDate: now })
   }
 
   function markRow(id, state) {
@@ -645,14 +649,20 @@ function compareEntries(firstEntry, secondEntry, sortMode) {
   }
 
   if (sortMode === 'due_asc') {
-    return getSortDate(firstEntry).getTime() - getSortDate(secondEntry).getTime()
+    return getDueSortDate(firstEntry).getTime() - getDueSortDate(secondEntry).getTime()
   }
 
-  return getSortDate(secondEntry).getTime() - getSortDate(firstEntry).getTime()
+  return getUpdatedSortDate(secondEntry).getTime() - getUpdatedSortDate(firstEntry).getTime()
 }
 
-function getSortDate(entry) {
+function getUpdatedSortDate(entry) {
   const timestamp = Date.parse(`${entry.updatedAt || entry.createdAt}T00:00:00`)
+  if (Number.isFinite(timestamp)) return new Date(timestamp)
+  return new Date(0)
+}
+
+function getDueSortDate(entry) {
+  const timestamp = Date.parse(`${entry.dueDate || entry.updatedAt || entry.createdAt}T00:00:00`)
   if (Number.isFinite(timestamp)) return new Date(timestamp)
   return new Date(0)
 }
