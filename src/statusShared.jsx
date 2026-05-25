@@ -49,7 +49,6 @@ export function StatusPage({
   const stats = useMemo(
     () => ({
       dringend: statusEntries.filter((entry) => normalizeStatus(entry.status) === 'dringend').length,
-      offen: statusEntries.filter((entry) => normalizeStatus(entry.status) === 'offen').length,
       aktiv: statusEntries.filter((entry) => normalizeStatus(entry.status) !== 'erledigt').length,
       erledigt: statusEntries.filter((entry) => normalizeStatus(entry.status) === 'erledigt').length,
       eintraege: statusEntries.length,
@@ -115,7 +114,7 @@ export function StatusPage({
                   <span style={{ fontWeight: 500, color: 'var(--text-primary)' }}>
                     {stats.aktiv}
                   </span>{' '}
-                  Offen
+                  Aktiv
                 </span>
                 <span className="status-summary-item">
                   <span style={{ fontWeight: 500, color: 'var(--text-primary)' }}>
