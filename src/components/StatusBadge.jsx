@@ -1,4 +1,8 @@
 const statusMeta = {
+  urgent: {
+    color: 'var(--danger)',
+    background: 'var(--color-danger-soft)',
+  },
   available: {
     color: 'var(--success)',
     background: 'var(--color-success-soft)',

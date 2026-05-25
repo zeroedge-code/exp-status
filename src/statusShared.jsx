@@ -4,10 +4,16 @@ import { StatusCard } from './components/StatusCard.jsx'
 import { SkeletonRow } from './components/SkeletonRow.jsx'
 import { categories, defaultDisplaySettings, formatDate } from './statusData.js'
 
-const statusFilterOptions = ['Alle', 'Offen', 'Neu', 'Erledigt']
+const statusFilterOptions = ['Alle', 'Dringend', 'Offen', 'Neu', 'Erledigt']
 const ownerFilterOptions = ['Operator', 'Techbuddy']
+const viewModeStorageKey = 'expertenstatus-view-mode'
 
 const statusConfig = {
+  Dringend: {
+    key: 'urgent',
+    filterKey: 'dringend',
+    label: 'DRINGEND',
+  },
   Offen: {
     key: 'busy',
     filterKey: 'offen',
@@ -33,13 +39,19 @@ export function StatusPage({
 }) {
   const displaySettings = { ...defaultDisplaySettings, ...settings }
   const [activeFilter, setActiveFilter] = useState('alle')
+  const [compactMode, setCompactMode] = useState(() => getStoredCompactMode())
   const latestUpdate = getLatestUpdate(statusEntries)
-  const visibleEntries = statusEntries.filter((entry) => entryMatchesFilter(entry, activeFilter))
+  const visibleEntries = sortEntriesByRelevance(
+    statusEntries.filter((entry) => entryMatchesFilter(entry, activeFilter)),
+  )
   const openEntries = statusEntries.filter((entry) => normalizeStatus(entry.status) !== 'erledigt')
   const nextDueEntry = getNextDueEntry(openEntries)
   const stats = useMemo(
     () => ({
-      offen: statusEntries.filter((entry) => normalizeStatus(entry.status) !== 'erledigt').length,
+      dringend: statusEntries.filter((entry) => normalizeStatus(entry.status) === 'dringend').length,
+      offen: statusEntries.filter((entry) => normalizeStatus(entry.status) === 'offen').length,
+      aktiv: statusEntries.filter((entry) => normalizeStatus(entry.status) !== 'erledigt').length,
+      erledigt: statusEntries.filter((entry) => normalizeStatus(entry.status) === 'erledigt').length,
       eintraege: statusEntries.length,
       naechsteFrist:
         displaySettings.showNextDue && nextDueEntry ? getDueText(getDueDate(nextDueEntry)) : null,
@@ -48,48 +60,21 @@ export function StatusPage({
   )
 
   return (
-    <main className="min-h-screen px-4 py-6 sm:py-10">
-      <div className="mx-auto max-w-2xl">
-        <header
-          style={{
-            background: 'white',
-            borderRadius: 'var(--radius-md)',
-            border: '0.5px solid var(--border)',
-            overflow: 'hidden',
-            marginBottom: '1.5rem',
-          }}
-        >
-          <div
-            style={{
-              padding: '20px 24px 16px',
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              gap: '16px',
-            }}
-          >
+    <main className="status-page min-h-screen px-4 py-6 sm:py-10">
+      <div className="status-shell mx-auto">
+        <header className="status-header mb-6">
+          <div className="status-header-top">
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: 0 }}>
-              <div
-                style={{
-                  width: '36px',
-                  height: '36px',
-                  background: '#dbeafe',
-                  borderRadius: '8px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  flexShrink: 0,
-                }}
-              >
+              <div className="status-icon">
                 <ChartBarIcon />
               </div>
               <div style={{ minWidth: 0 }}>
                 <h1
                   style={{
-                    fontSize: '16px',
-                    fontWeight: 500,
+                    fontSize: '18px',
+                    fontWeight: 600,
                     margin: 0,
-                    letterSpacing: '-0.01em',
+                    letterSpacing: 0,
                   }}
                 >
                   Expertenstatus
@@ -99,7 +84,7 @@ export function StatusPage({
                   style={{
                     fontSize: '12px',
                     color: 'var(--text-secondary)',
-                    margin: 0,
+                    margin: '2px 0 0',
                   }}
                 >
                   Aktueller Überblick aller Themen und Aufgaben
@@ -119,31 +104,36 @@ export function StatusPage({
           {displaySettings.showHeaderSummary && (
             <>
               <div style={{ height: '0.5px', background: 'var(--border)' }} />
-              <div
-                style={{
-                  padding: '12px 24px',
-                  display: 'flex',
-                  gap: '24px',
-                  flexWrap: 'wrap',
-                }}
-              >
-                <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
+              <div className="status-summary">
+                <span className="status-summary-item">
                   <span style={{ fontWeight: 500, color: 'var(--text-primary)' }}>
-                    {stats.offen}
+                    {stats.dringend}
+                  </span>{' '}
+                  Dringend
+                </span>
+                <span className="status-summary-item">
+                  <span style={{ fontWeight: 500, color: 'var(--text-primary)' }}>
+                    {stats.aktiv}
                   </span>{' '}
                   Offen
                 </span>
-                <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
+                <span className="status-summary-item">
                   <span style={{ fontWeight: 500, color: 'var(--text-primary)' }}>
                     {stats.eintraege}
                   </span>{' '}
                   Einträge
                 </span>
-                <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
+                <span className="status-summary-item">
                   Nächste Frist:{' '}
                   <span style={{ fontWeight: 500, color: 'var(--text-primary)' }}>
                     {stats.naechsteFrist ?? 'Keine'}
                   </span>
+                </span>
+                <span className="status-summary-item">
+                  <span style={{ fontWeight: 500, color: 'var(--text-primary)' }}>
+                    {stats.erledigt}
+                  </span>{' '}
+                  Erledigt
                 </span>
               </div>
             </>
@@ -153,7 +143,7 @@ export function StatusPage({
         </header>
 
         {displaySettings.showFilters && (
-          <div className="-mx-4 mb-5 flex gap-3 overflow-x-auto px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <div className="status-toolbar">
             <FilterGroup
               label="Status"
               options={statusFilterOptions}
@@ -168,8 +158,29 @@ export function StatusPage({
               activeFilter={activeFilter}
               setActiveFilter={setActiveFilter}
             />
+            <span className="view-toggle" aria-label="Ansicht">
+              {['Komfort', 'Kompakt'].map((mode) => {
+                const isCompactOption = mode === 'Kompakt'
+                const isActive = compactMode === isCompactOption
+                return (
+                  <button
+                    key={mode}
+                    type="button"
+                    aria-pressed={isActive}
+                    onClick={() => updateCompactMode(isCompactOption, setCompactMode)}
+                    className={isActive ? 'view-toggle-button-active' : ''}
+                  >
+                    {mode}
+                  </button>
+                )
+              })}
+            </span>
           </div>
         )}
+        <p className="filter-status">
+          {visibleEntries.length} von {statusEntries.length} Einträgen angezeigt
+          {activeFilter !== 'alle' ? ` · Filter: ${getFilterLabel(activeFilter)}` : ''}
+        </p>
 
         {loading ? (
           <div className="grid gap-2">
@@ -185,8 +196,11 @@ export function StatusPage({
                   if (entries.length === 0) return null
                   return (
                     <section key={category} className="grid gap-2">
-                      <div className="mt-4 flex items-center gap-3 first:mt-0">
-                        <h2 className="label">{category}</h2>
+                      <div className="category-heading">
+                        <h2 className="label category-title">
+                          {category}
+                          <span className="category-count">{entries.length}</span>
+                        </h2>
                         <div className="divider flex-1" />
                       </div>
                       {entries.map((entry, index) => (
@@ -195,8 +209,9 @@ export function StatusPage({
                           entry={entry}
                           badgeStatus={getBadgeStatus(entry.status)}
                           badgeLabel={getBadgeLabel(entry.status)}
-                          meta={`${getOwner(entry).label} · ${formatRelativeUpdated(entry.updatedAt)} aktualisiert`}
+                          meta={getCardMeta(entry)}
                           delay={index * 60}
+                          compact={compactMode}
                         />
                       ))}
                     </section>
@@ -208,13 +223,14 @@ export function StatusPage({
                     entry={entry}
                     badgeStatus={getBadgeStatus(entry.status)}
                     badgeLabel={getBadgeLabel(entry.status)}
-                    meta={`${getOwner(entry).label} · ${formatRelativeUpdated(entry.updatedAt)} aktualisiert`}
+                    meta={getCardMeta(entry)}
                     delay={index * 60}
+                    compact={compactMode}
                   />
                 ))}
           </div>
         ) : (
-          <div className="card px-5 py-8 text-center">
+          <div className="card empty-state px-5 py-8 text-center">
             <p className="font-display text-sm text-[var(--text-primary)]">Keine Einträge</p>
             <p className="mt-2 text-sm text-[var(--text-secondary)]">
               Für den aktuellen Filter liegen keine Statusmeldungen vor.
@@ -228,7 +244,7 @@ export function StatusPage({
 
 function FilterGroup({ label, options, entries, activeFilter, setActiveFilter }) {
   return (
-    <div className="flex w-max items-center gap-1 rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--bg-surface)] p-1">
+    <div className="filter-group flex w-max items-center gap-1 rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--bg-surface)] p-1">
       <span className="label px-2">{label}</span>
       {options.map((filter) => {
         const filterKey = filter.toLowerCase()
@@ -296,14 +312,47 @@ function entryMatchesFilter(entry, activeFilter) {
   return normalizeStatus(entry.status) === activeFilter || getOwner(entry).key === activeFilter
 }
 
+function sortEntriesByRelevance(entries) {
+  return [...entries].sort((first, second) => {
+    const statusDiff = getStatusRank(first) - getStatusRank(second)
+    if (statusDiff !== 0) return statusDiff
+    return getDueDate(first) - getDueDate(second)
+  })
+}
+
+function getStatusRank(entry) {
+  if (normalizeKnownStatus(entry.status) === 'Dringend' || entry.priority === 'Hohe Priorität') return 0
+  if (normalizeKnownStatus(entry.status) === 'Neu') return 1
+  if (normalizeKnownStatus(entry.status) === 'Offen') return 2
+  return 3
+}
+
 function getFilterCount(entries, filterKey) {
   if (filterKey === 'alle') return entries.length
   return entries.filter((entry) => entryMatchesFilter(entry, filterKey)).length
 }
 
+function getFilterLabel(filterKey) {
+  if (filterKey === 'techbuddy') return 'Techbuddy'
+  if (filterKey === 'operator') return 'Operator'
+  const knownOption = statusFilterOptions.find((option) => option.toLowerCase() === filterKey)
+  return knownOption || filterKey
+}
+
+function getStoredCompactMode() {
+  if (typeof window === 'undefined') return false
+  return window.localStorage.getItem(viewModeStorageKey) === 'compact'
+}
+
+function updateCompactMode(compactMode, setCompactMode) {
+  setCompactMode(compactMode)
+  window.localStorage.setItem(viewModeStorageKey, compactMode ? 'compact' : 'comfort')
+}
+
 function normalizeKnownStatus(status) {
   if (status === 'Erledigt') return 'Erledigt'
   if (status === 'Neu') return 'Neu'
+  if (status === 'Dringend') return 'Dringend'
   return 'Offen'
 }
 
@@ -327,6 +376,16 @@ function getOwner(entry) {
     return { key: 'techbuddy', label: 'Techbuddy' }
   }
   return { key: 'operator', label: 'Operator' }
+}
+
+function getCardMeta(entry) {
+  const dueDate = getDueDate(entry)
+  return {
+    owner: getOwner(entry).label,
+    updated: `${formatRelativeUpdated(entry.updatedAt)} aktualisiert`,
+    due: `Fällig: ${getDueText(dueDate)}`,
+    overdue: isOverdue(dueDate) && normalizeKnownStatus(entry.status) !== 'Erledigt',
+  }
 }
 
 function getDueDate(entry) {
@@ -353,6 +412,14 @@ function getDueText(date) {
   return formatDate(toDateInputValue(date))
 }
 
+function isOverdue(date) {
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  const compareDate = new Date(date)
+  compareDate.setHours(0, 0, 0, 0)
+  return compareDate < today
+}
+
 function formatRelativeUpdated(dateValue) {
   const timestamp = Date.parse(`${dateValue}T00:00:00`)
   if (!Number.isFinite(timestamp)) return 'ohne Datum'
@@ -366,7 +433,7 @@ function formatDistance(date) {
   compareDate.setHours(0, 0, 0, 0)
   const diffDays = Math.round((today - compareDate) / 86400000)
 
-  if (diffDays === 0) return 'heute aktualisiert'
+  if (diffDays === 0) return 'heute'
   if (diffDays === 1) return 'vor 1 Tag'
   if (diffDays > 1) return `vor ${diffDays} Tagen`
   if (diffDays === -1) return 'morgen'
