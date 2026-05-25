@@ -1,14 +1,14 @@
 import { StatusBadge } from './StatusBadge.jsx'
 
-export function StatusCard({ entry, badgeStatus, badgeLabel, meta, delay = 0, compact = false }) {
+export function StatusCard({ entry, badgeStatus, badgeLabel, meta, delay = 0 }) {
   const titleId = `status-card-title-${entry.id}`
 
   return (
     <article
       aria-labelledby={titleId}
       className={`card status-card row-enter group grid gap-3 transition sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start ${
-        compact ? 'status-card-compact' : ''
-      } ${badgeStatus === 'away' ? 'status-card-done' : ''}`}
+        badgeStatus === 'away' ? 'status-card-done' : ''
+      }`}
       style={{ animationDelay: `${delay}ms`, '--status-accent': getAccentColor(entry, badgeStatus) }}
     >
       <div className="flex min-w-0 items-center gap-3">

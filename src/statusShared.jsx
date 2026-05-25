@@ -6,7 +6,6 @@ import { categories, defaultDisplaySettings, formatDate } from './statusData.js'
 
 const statusFilterOptions = ['Alle', 'Dringend', 'Offen', 'Neu', 'Erledigt']
 const ownerFilterOptions = ['Operator', 'Techbuddy']
-const viewModeStorageKey = 'expertenstatus-view-mode'
 
 const statusConfig = {
   Dringend: {
@@ -39,7 +38,6 @@ export function StatusPage({
 }) {
   const displaySettings = { ...defaultDisplaySettings, ...settings }
   const [activeFilter, setActiveFilter] = useState('alle')
-  const [compactMode, setCompactMode] = useState(() => getStoredCompactMode())
   const latestUpdate = getLatestUpdate(statusEntries)
   const visibleEntries = sortEntriesByRelevance(
     statusEntries.filter((entry) => entryMatchesFilter(entry, activeFilter)),
@@ -157,23 +155,6 @@ export function StatusPage({
               activeFilter={activeFilter}
               setActiveFilter={setActiveFilter}
             />
-            <span className="view-toggle" aria-label="Ansicht">
-              {['Komfort', 'Kompakt'].map((mode) => {
-                const isCompactOption = mode === 'Kompakt'
-                const isActive = compactMode === isCompactOption
-                return (
-                  <button
-                    key={mode}
-                    type="button"
-                    aria-pressed={isActive}
-                    onClick={() => updateCompactMode(isCompactOption, setCompactMode)}
-                    className={isActive ? 'view-toggle-button-active' : ''}
-                  >
-                    {mode}
-                  </button>
-                )
-              })}
-            </span>
           </div>
         )}
         <p className="filter-status">
@@ -210,7 +191,6 @@ export function StatusPage({
                           badgeLabel={getBadgeLabel(entry.status)}
                           meta={getCardMeta(entry)}
                           delay={index * 60}
-                          compact={compactMode}
                         />
                       ))}
                     </section>
@@ -224,7 +204,6 @@ export function StatusPage({
                     badgeLabel={getBadgeLabel(entry.status)}
                     meta={getCardMeta(entry)}
                     delay={index * 60}
-                    compact={compactMode}
                   />
                 ))}
           </div>
@@ -336,16 +315,6 @@ function getFilterLabel(filterKey) {
   if (filterKey === 'operator') return 'Operator'
   const knownOption = statusFilterOptions.find((option) => option.toLowerCase() === filterKey)
   return knownOption || filterKey
-}
-
-function getStoredCompactMode() {
-  if (typeof window === 'undefined') return false
-  return window.localStorage.getItem(viewModeStorageKey) === 'compact'
-}
-
-function updateCompactMode(compactMode, setCompactMode) {
-  setCompactMode(compactMode)
-  window.localStorage.setItem(viewModeStorageKey, compactMode ? 'compact' : 'comfort')
 }
 
 function normalizeKnownStatus(status) {

@@ -228,38 +228,6 @@ textarea:focus-visible {
   font-size: 0.78rem;
 }
 
-.view-toggle {
-  display: inline-flex;
-  flex: 0 0 auto;
-  gap: 0.125rem;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  background: var(--bg-surface);
-  padding: 0.125rem;
-  box-shadow: 0 8px 22px rgba(26, 25, 23, 0.035);
-}
-
-.view-toggle button {
-  border: 0;
-  border-radius: calc(var(--radius-sm) - 1px);
-  background: transparent;
-  color: var(--text-secondary);
-  padding: 0.42rem 0.65rem;
-  font-size: 0.74rem;
-  font-weight: 600;
-  line-height: 1;
-}
-
-.view-toggle button:hover {
-  background: var(--bg-elevated);
-  color: var(--text-primary);
-}
-
-.view-toggle .view-toggle-button-active {
-  background: var(--accent);
-  color: #ffffff;
-}
-
 .status-card {
   position: relative;
   overflow: hidden;
@@ -280,34 +248,6 @@ textarea:focus-visible {
   border-color: color-mix(in srgb, var(--accent) 28%, var(--border));
   background: color-mix(in srgb, var(--bg-surface) 76%, var(--bg-elevated));
   box-shadow: 0 18px 42px rgba(26, 25, 23, 0.065);
-}
-
-.status-card-compact {
-  gap: 0.5rem;
-  padding-block: 0.72rem;
-}
-
-.status-card-compact .badge {
-  padding: 0.25rem 0.48rem;
-  font-size: 0.64rem;
-}
-
-.status-card-compact .status-card-description {
-  display: -webkit-box;
-  overflow: hidden;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-  font-size: 0.83rem;
-  line-height: 1.35rem;
-}
-
-.status-card-compact h3 {
-  font-size: 0.93rem;
-  line-height: 1.35rem;
-}
-
-.status-card-compact p {
-  margin-top: 0.2rem;
 }
 
 .status-card-done {
@@ -415,13 +355,6 @@ textarea:focus-visible {
     display: none;
   }
 
-  .view-toggle {
-    width: 100%;
-  }
-
-  .view-toggle button {
-    flex: 1;
-  }
 }
 
 .btn-primary,

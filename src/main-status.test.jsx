@@ -1,11 +1,9 @@
 import { render, screen, within } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
 import { afterEach, expect, test, vi } from 'vitest'
 import { StatusApp } from './main-status.jsx'
 
 afterEach(() => {
   vi.restoreAllMocks()
-  window.localStorage.clear()
 })
 
 test('shows status entries loaded from the API', async () => {
@@ -93,65 +91,6 @@ test('sorts visible entries by relevance within categories', async () => {
   expect(within(cards[0]).getByRole('heading', { name: 'Sofort prüfen' })).toBeInTheDocument()
   expect(within(cards[1]).getByRole('heading', { name: 'Neu vorbereiten' })).toBeInTheDocument()
   expect(within(cards[2]).getByRole('heading', { name: 'Archivierter Punkt' })).toBeInTheDocument()
-})
-
-test('toggles compact status card density', async () => {
-  const user = userEvent.setup()
-  vi.spyOn(globalThis, 'fetch').mockResolvedValue({
-    ok: true,
-    json: async () => ({
-      statusEntries: [
-        {
-          id: 'compact-entry',
-          category: 'Weitere Themen',
-          title: 'Viele Details prüfen',
-          status: 'Offen',
-          createdAt: '2026-05-20',
-          updatedAt: '2026-05-20',
-          dueDate: '2026-05-27',
-          description: 'Diese Beschreibung ist bewusst länger, damit der kompakte Modus sichtbar kürzt.',
-        },
-      ],
-    }),
-  })
-
-  render(<StatusApp />)
-
-  await screen.findByRole('heading', { name: 'Viele Details prüfen' })
-  const card = screen.getByRole('article', { name: 'Viele Details prüfen' })
-
-  expect(card).not.toHaveClass('status-card-compact')
-  await user.click(screen.getByRole('button', { name: 'Kompakt' }))
-  expect(card).toHaveClass('status-card-compact')
-  expect(screen.getByRole('button', { name: 'Kompakt' })).toHaveAttribute('aria-pressed', 'true')
-  expect(window.localStorage.getItem('expertenstatus-view-mode')).toBe('compact')
-})
-
-test('restores compact density from local storage', async () => {
-  window.localStorage.setItem('expertenstatus-view-mode', 'compact')
-  vi.spyOn(globalThis, 'fetch').mockResolvedValue({
-    ok: true,
-    json: async () => ({
-      statusEntries: [
-        {
-          id: 'stored-compact-entry',
-          category: 'Weitere Themen',
-          title: 'Gespeicherte Ansicht',
-          status: 'Offen',
-          createdAt: '2026-05-20',
-          updatedAt: '2026-05-20',
-          dueDate: '2026-05-27',
-          description: 'Ansicht bleibt kompakt.',
-        },
-      ],
-    }),
-  })
-
-  render(<StatusApp />)
-
-  await screen.findByRole('heading', { name: 'Gespeicherte Ansicht' })
-  expect(screen.getByRole('article', { name: 'Gespeicherte Ansicht' })).toHaveClass('status-card-compact')
-  expect(screen.getByRole('button', { name: 'Kompakt' })).toHaveAttribute('aria-pressed', 'true')
 })
 
 test('renders completed entries with reduced emphasis', async () => {
