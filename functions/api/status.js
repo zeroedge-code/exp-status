@@ -1,96 +1,24 @@
+import {
+  categories,
+  categoryMigration,
+  defaultDisplaySettings,
+  defaultStatusEntries,
+  ownerOptions,
+  priorityOptions,
+  statusMigration,
+  statusOptions,
+  typeOptions,
+} from '../../src/statusSchema.js'
+
 const STORE_KEY = 'status-data'
-
-const categories = [
-  'Auszahlungen & Vergütung',
-  'Marketing & Sichtbarkeit',
-  'Termine & Koordination',
-  'Weitere Themen',
-]
-
-const categoryMigration = {
-  'Finanzierung & Bank': 'Auszahlungen & Vergütung',
-  'Finanzen & Expertenzahlungen': 'Auszahlungen & Vergütung',
-  Marketing: 'Marketing & Sichtbarkeit',
-  Organisation: 'Termine & Koordination',
-  'Abstimmung & Organisation': 'Termine & Koordination',
-  Sonstiges: 'Weitere Themen',
-}
-
-const statusOptions = ['Neu', 'Dringend', 'Offen', 'Erledigt']
-const ownerOptions = ['Operator', 'Techbuddy']
-const typeOptions = ['info', 'task', 'process']
-const priorityOptions = ['Mittlere Priorität', 'Hohe Priorität', '']
-
-const defaultSettings = {
-  showHeaderSummary: true,
-  showNextDue: true,
-  showStats: true,
-  showFilters: true,
-  showCategories: true,
-  showProgress: true,
-  showLiveStatusPill: true,
-  showLiveAge: false,
-}
-
-const statusMigration = {
-  'Antwort ausstehend': 'Offen',
-  'In Bearbeitung': 'Offen',
-  Abgeschlossen: 'Erledigt',
-}
-
+const statusPriorityOptions = [...priorityOptions, '']
 const reminderIntervals = ['einmalig', 'monatlich wiederkehrend']
 const datePattern = /^\d{4}-\d{2}-\d{2}$/
 
 const defaultData = {
   revision: 1,
-  statusEntries: [
-    {
-      id: 'status-payment-documents',
-      category: 'Auszahlungen & Vergütung',
-      title: 'Rückmeldung Zahlungsunterlagen',
-      status: 'Offen',
-      owner: 'Operator',
-      type: 'task',
-      priority: 'Hohe Priorität',
-      showProgress: false,
-      createdAt: '2026-05-18',
-      updatedAt: '2026-05-18',
-      dueDate: '2026-05-25',
-      description:
-        'Die eingereichten Unterlagen liegen zur Prüfung vor. Der nächste Stand wird nach Eingang der Rückmeldung ergänzt.',
-    },
-    {
-      id: 'status-campaign-material',
-      category: 'Marketing & Sichtbarkeit',
-      title: 'Abstimmung Kampagnenmaterial',
-      status: 'Neu',
-      owner: 'Techbuddy',
-      type: 'task',
-      priority: 'Mittlere Priorität',
-      showProgress: false,
-      createdAt: '2026-05-20',
-      updatedAt: '2026-05-20',
-      dueDate: '2026-05-27',
-      description:
-        'Entwürfe werden intern konsolidiert und anschließend für die Freigabe vorbereitet.',
-    },
-    {
-      id: 'status-expert-schedule',
-      category: 'Termine & Koordination',
-      title: 'Terminplanung Expertenrunde',
-      status: 'Erledigt',
-      owner: 'Operator',
-      type: 'info',
-      priority: '',
-      showProgress: false,
-      createdAt: '2026-05-16',
-      updatedAt: '2026-05-16',
-      dueDate: '2026-05-16',
-      description:
-        'Die Terminserie ist bestätigt. Weitere Änderungen werden separat dokumentiert.',
-    },
-  ],
-  settings: defaultSettings,
+  statusEntries: defaultStatusEntries,
+  settings: defaultDisplaySettings,
   tasks: [],
 }
 
@@ -165,7 +93,7 @@ function normalizeStatusEntry(entry) {
     status,
     owner: ownerOptions.includes(entry.owner) ? entry.owner : inferOwner(entry, status),
     type: typeOptions.includes(entry.type) ? entry.type : inferType(entry),
-    priority: priorityOptions.includes(entry.priority) ? entry.priority : inferPriority(status),
+    priority: statusPriorityOptions.includes(entry.priority) ? entry.priority : inferPriority(status),
     showProgress: entry.type === 'process' || Boolean(entry.showProgress),
     createdAt: entry.createdAt || entry.updatedAt,
     updatedAt: entry.updatedAt,
@@ -180,7 +108,7 @@ function normalizeStatusEntry(entry) {
     !statusOptions.includes(normalized.status) ||
     !ownerOptions.includes(normalized.owner) ||
     !typeOptions.includes(normalized.type) ||
-    !priorityOptions.includes(normalized.priority) ||
+    !statusPriorityOptions.includes(normalized.priority) ||
     !isValidDateString(normalized.createdAt) ||
     !isValidDateString(normalized.updatedAt) ||
     !isValidDateString(normalized.dueDate)
@@ -217,10 +145,10 @@ function normalizeTask(task) {
 }
 
 function normalizeSettings(settings) {
-  if (!isRecord(settings)) return defaultSettings
+  if (!isRecord(settings)) return defaultDisplaySettings
 
   return Object.fromEntries(
-    Object.entries(defaultSettings).map(([key, fallback]) => [
+    Object.entries(defaultDisplaySettings).map(([key, fallback]) => [
       key,
       typeof settings[key] === 'boolean' ? settings[key] : fallback,
     ]),
@@ -234,7 +162,7 @@ function validateSettings(settings) {
     return ['settings must be an object.']
   }
 
-  Object.keys(defaultSettings).forEach((key) => {
+  Object.keys(defaultDisplaySettings).forEach((key) => {
     if (settings[key] !== undefined && typeof settings[key] !== 'boolean') {
       errors.push(`settings.${key} must be a boolean.`)
     }

@@ -20,11 +20,20 @@ test('normalizeStatusEntries migrates old category names', () => {
         updatedAt: '2026-05-21',
         description: 'Bestätigt.',
       },
+      {
+        id: 'three',
+        category: 'Webseiten & Neuerungen',
+        title: 'Neue Funktion',
+        status: 'Neu',
+        updatedAt: '2026-05-22',
+        description: 'Update ist vorbereitet.',
+      },
     ],
   })
 
   expect(entries[0].category).toBe('Auszahlungen & Vergütung')
   expect(entries[1].category).toBe('Termine & Koordination')
+  expect(entries[2].category).toBe('Website & Updates')
   expect(entries[0].status).toBe('Offen')
   expect(entries[1].status).toBe('Erledigt')
   expect(entries[0].createdAt).toBe('2026-05-20')

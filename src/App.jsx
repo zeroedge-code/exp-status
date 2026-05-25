@@ -51,6 +51,15 @@ function normalizeData(rawData) {
 }
 
 async function fetchData() {
+  if (shouldUseMockStatusData()) {
+    const { mockStatusData } = await import(/* @vite-ignore */ './statusMockData.js')
+    return normalizeData({
+      ...initialData,
+      statusEntries: mockStatusData.statusEntries,
+      settings: mockStatusData.settings,
+    })
+  }
+
   if (useLocalDevStore) {
     const stored = window.localStorage.getItem(localDevStorageKey)
     return stored ? normalizeData(JSON.parse(stored)) : initialData
@@ -61,6 +70,14 @@ async function fetchData() {
   })
   if (!response.ok) throw new Error('Statusdaten konnten nicht geladen werden.')
   return normalizeData(await response.json())
+}
+
+function shouldUseMockStatusData() {
+  return (
+    import.meta.env.DEV &&
+    import.meta.env.MODE !== 'test' &&
+    new URLSearchParams(window.location.search).has('mock')
+  )
 }
 
 async function saveData(nextData) {

@@ -12,6 +12,14 @@ import {
 const initialStatusEntries = createInitialStatusEntries()
 
 async function fetchStatusData() {
+  if (shouldUseMockStatusData()) {
+    const { mockStatusData } = await import(/* @vite-ignore */ './statusMockData.js')
+    return {
+      statusEntries: normalizeStatusEntries(mockStatusData, initialStatusEntries),
+      settings: normalizeDisplaySettings(mockStatusData),
+    }
+  }
+
   const response = await fetch('/api/status', {
     headers: { Accept: 'application/json' },
   })
@@ -21,6 +29,14 @@ async function fetchStatusData() {
     statusEntries: normalizeStatusEntries(payload, initialStatusEntries),
     settings: normalizeDisplaySettings(payload),
   }
+}
+
+function shouldUseMockStatusData() {
+  return (
+    import.meta.env.DEV &&
+    import.meta.env.MODE !== 'test' &&
+    new URLSearchParams(window.location.search).has('mock')
+  )
 }
 
 export function StatusApp() {
