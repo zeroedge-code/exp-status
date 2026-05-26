@@ -38,6 +38,13 @@ const localDevStorageKey = 'expertenstatus-local-dev-data'
 const useLocalDevStore =
   import.meta.env.DEV && import.meta.env.MODE !== 'test' && !import.meta.env.VITE_APP_TARGET
 
+function localStorageGet(key) {
+  try { return window.localStorage.getItem(key) } catch { return null }
+}
+function localStorageSet(key, value) {
+  try { window.localStorage.setItem(key, value) } catch { /* storage blocked */ }
+}
+
 function normalizeData(rawData) {
   return {
     revision: Number.isInteger(rawData?.revision) && rawData.revision > 0 ? rawData.revision : 1,
@@ -63,7 +70,7 @@ async function fetchData(useMockData = false) {
   }
 
   if (useLocalDevStore) {
-    const stored = window.localStorage.getItem(localDevStorageKey)
+    const stored = localStorageGet(localDevStorageKey)
     return stored ? normalizeData(JSON.parse(stored)) : initialData
   }
 
@@ -81,7 +88,7 @@ async function saveData(nextData) {
       ...nextNormalizedData,
       revision: nextNormalizedData.revision + 1,
     }
-    window.localStorage.setItem(localDevStorageKey, JSON.stringify(normalizedData))
+    localStorageSet(localDevStorageKey, JSON.stringify(normalizedData))
     return normalizedData
   }
 
@@ -104,7 +111,7 @@ async function saveData(nextData) {
 
 async function saveSettings(settings, revision) {
   if (useLocalDevStore) {
-    const stored = window.localStorage.getItem(localDevStorageKey)
+    const stored = localStorageGet(localDevStorageKey)
     const currentData = stored ? normalizeData(JSON.parse(stored)) : initialData
     const normalizedData = normalizeData({
       ...currentData,
@@ -114,7 +121,7 @@ async function saveSettings(settings, revision) {
         ...settings,
       },
     })
-    window.localStorage.setItem(localDevStorageKey, JSON.stringify(normalizedData))
+    localStorageSet(localDevStorageKey, JSON.stringify(normalizedData))
     return normalizedData
   }
 
@@ -165,6 +172,17 @@ function App({ adminOnly = false }) {
       active = false
     }
   }, [useMockData])
+
+  const isStatusView = !adminOnly && path !== '/intern'
+  useEffect(() => {
+    if (!isStatusView) return
+    const id = window.setInterval(() => {
+      fetchData(useMockData)
+        .then((remoteData) => setData(remoteData))
+        .catch(() => {})
+    }, 30000)
+    return () => window.clearInterval(id)
+  }, [isStatusView, useMockData])
 
   useEffect(() => {
     const onPopState = () => setPath(adminOnly ? '/intern' : window.location.pathname)
@@ -232,7 +250,7 @@ function App({ adminOnly = false }) {
     }
   }
 
-  const isIntern = adminOnly || path === '/intern'
+  const isIntern = !isStatusView
 
   function toggleMockData(enabled) {
     setSyncState('loading')

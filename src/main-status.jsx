@@ -1,5 +1,6 @@
-import { StrictMode, useEffect, useState } from 'react'
+import { StrictMode, useState } from 'react'
 import { createRoot } from 'react-dom/client'
+import useSWR, { SWRConfig } from 'swr'
 import './index.css'
 import { StatusPage } from './statusShared.jsx'
 import {
@@ -11,7 +12,7 @@ import {
 
 const initialStatusEntries = createInitialStatusEntries()
 
-async function fetchStatusData(useMockData = false) {
+async function fetchStatusData(useMockData) {
   if (useMockData) {
     const { mockStatusData } = await import('./statusMockData.js')
     return {
@@ -31,35 +32,20 @@ async function fetchStatusData(useMockData = false) {
   }
 }
 
-export function StatusApp() {
+function StatusAppInner() {
   const [useMockData, setUseMockData] = useState(() => shouldUseMockStatusData())
-  const [statusEntries, setStatusEntries] = useState(initialStatusEntries)
-  const [settings, setSettings] = useState(defaultDisplaySettings)
-  const [loadError, setLoadError] = useState('')
-  const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    let active = true
-    fetchStatusData(useMockData)
-      .then((data) => {
-        if (!active) return
-        setStatusEntries(data.statusEntries)
-        setSettings(data.settings)
-        setLoadError('')
-        setLoading(false)
-      })
-      .catch((error) => {
-        if (!active) return
-        setLoadError(error.message)
-        setLoading(false)
-      })
-    return () => {
-      active = false
-    }
-  }, [useMockData])
+  const { data, error, isLoading } = useSWR(
+    ['status', useMockData],
+    ([, mock]) => fetchStatusData(mock),
+    { revalidateOnFocus: true, refreshInterval: 30000, dedupingInterval: 10000 },
+  )
+
+  const statusEntries = data?.statusEntries ?? initialStatusEntries
+  const settings = data?.settings ?? defaultDisplaySettings
+  const loadError = error?.message ?? ''
 
   function toggleMockData(enabled) {
-    setLoading(true)
     setUseMockData(enabled)
     updateMockQuery(enabled)
   }
@@ -74,8 +60,16 @@ export function StatusApp() {
           <div className="mx-auto max-w-2xl">{loadError}</div>
         </div>
       )}
-      <StatusPage statusEntries={statusEntries} settings={settings} loading={loading} />
+      <StatusPage statusEntries={statusEntries} settings={settings} loading={isLoading} />
     </div>
+  )
+}
+
+export function StatusApp() {
+  return (
+    <SWRConfig value={{ provider: () => new Map() }}>
+      <StatusAppInner />
+    </SWRConfig>
   )
 }
 
